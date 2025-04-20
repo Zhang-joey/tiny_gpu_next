@@ -1,0 +1,42 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p........."},
+      {"name": "reset", "wave": "10........"},
+      {"name": "enable", "wave": "0.1......."},
+      {"name": "core_state", "wave": "=x.=x...=..", "data": ["IDLE", "REQ", "UPDATE"]},
+      {"name": "decoded_mem_read_enable", "wave": "0.1......."},
+      {"name": "lsu_state", "wave": "=...==.=.=.", "data": ["IDLE", "REQ", "WAIT", "DONE", "IDLE"]},
+      {"name": "mem_read_valid", "wave": "0....1.0.."},
+      {"name": "mem_read_address", "wave": "=....=....", "data": ["0", "rs"]},
+      {"name": "mem_read_ready", "wave": "0.....10.."},
+      {"name": "mem_read_data", "wave": "=.....=...", "data": ["0",  "data"]},
+      {"name": "lsu_out", "wave": "=......=..", "data": ["0","data"]}
+    ],
+    "head": {
+      "text": "LSU Read Operation Waveform"
+    },
+    "foot": {
+      "text": "Reset -> IDLE -> REQUESTING -> WAITING -> DONE -> IDLE"
+    }
+  } 
+
+{
+    "signal": [
+      {"name": "clk", "wave": "p........."},
+      {"name": "reset", "wave": "10........"},
+      {"name": "enable", "wave": "0.1......."},
+      {"name": "core_state", "wave": "=x.=x...=..", "data": ["IDLE", "REQ", "UPDATE"]},
+      {"name": "decoded_mem_write_enable", "wave": "0.1......."},
+      {"name": "lsu_state", "wave": "=...==.=.=.", "data": ["IDLE", "REQ", "WAIT", "DONE", "IDLE"]},
+      {"name": "mem_write_valid", "wave": "0....1.0.."},
+      {"name": "mem_write_address", "wave": "=....=....", "data": ["0", "rs"]},
+      {"name": "mem_write_data", "wave": "=....=....", "data": ["0", "rt"]},
+      {"name": "mem_write_ready", "wave": "0.....10.."}
+    ],
+    "head": {
+      "text": "LSU Write Operation Waveform"
+    },
+    "foot": {
+      "text": "Reset -> IDLE -> REQUESTING -> WAITING -> DONE -> IDLE"
+    }
+  }

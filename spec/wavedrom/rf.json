@@ -1,0 +1,24 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p........."},
+      {"name": "reset", "wave": "10........"},
+      {"name": "enable", "wave": "0.1......."},
+      {"name": "r[13]", "wave": "=..=......", "data": ["0", "blockidx"]},
+      {"name": "r[14]", "wave": "=.........", "data": ["blockdim"]},
+      {"name": "r[15]", "wave": "=.........", "data": ["threadidx"]},
+      {"name": "core_state", "wave": "=x.=x.=...", "data": ["IDLE", "REQ", "UPDATE"]},
+      {"name": "decoded_reg_write_enable", "wave": "0....1...."},
+      {"name": "decoded_reg_input_mux", "wave": "x.=.....=..", "data": ["ARITH", "MEM/CONST"]},
+      {"name": "decoded_rd_address", "wave": "x.=..=....", "data": ["rd_addr", "rd_addr"]},
+      {"name": "decoded_rs_address", "wave": "x.=..=....", "data": ["rs_addr", "rs_addr"]},
+      {"name": "decoded_rt_address", "wave": "x.=..=....", "data": ["rt_addr", "rt_addr"]},
+      {"name": "alu_out", "wave": "x....=....", "data": ["alu_result"]},
+      {"name": "lsu_out", "wave": "x....=....", "data": ["lsu_result"]},
+      {"name": "rs", "wave": "=...=.....", "data": ["0", "rs_value"]},
+      {"name": "rt", "wave": "=...=.....", "data": ["0", "rt_value"]},
+      {"name": "r[rd_addr]", "wave": "=......=.=...", "data": ["old_value", "alu_result", "lsu_result/const"]},
+    ],
+    "head": {
+      "text": "Register File Operation Waveform"
+    },
+  }

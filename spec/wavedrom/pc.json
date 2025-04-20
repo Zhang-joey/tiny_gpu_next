@@ -1,0 +1,22 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p.........."},
+      {"name": "reset", "wave": "10........."},
+      {"name": "enable", "wave": "0.1........"},
+      {"name": "core_state", "wave": "=x.==x.=x=x", "data": ["IDLE", "EXE", "UPD", "EXE", "EXE"]},
+      {"name": "decoded_nzp", "wave": "x.....=....", "data": ["nzp"]},
+      {"name": "decoded_immediate", "wave": "x.....=....", "data": ["imm"]},
+      {"name": "decoded_nzp_write_enable", "wave": "0.1.0......"},
+      {"name": "decoded_pc_mux", "wave": "0.....1...."},
+      {"name": "alu_out", "wave": "x...=...x.", "data": ["cmp_result"]},
+      {"name": "current_pc", "wave": "=.........", "data": ["pc"]},
+      {"name": "nzp", "wave": "=....=....", "data": ["0", "cmp_result"]},
+      {"name": "next_pc", "wave": "=...=.....=", "data": ["0", "pc+1", "imm"]}
+    ],
+    "head": {
+      "text": "PC Operation Waveform (Branch)"
+    },
+      "foot": {
+        "text": "Ins order: CMP -> BRnzp(dismatch) -> BRnzp(match)"
+    },
+  }

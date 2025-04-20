@@ -1,0 +1,16 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p........."},
+      {"name": "reset", "wave": "10........"},
+      {"name": "enable", "wave": "0.1......."},
+      {"name": "core_state", "wave": "=x.=...x..", "data": ["IDLE", "EXECUTE"]},
+      {"name": "decoded_alu_arithmetic_mux", "wave": "=.=...=...", "data": ["", "ADD", "GT"]},
+      {"name": "decoded_alu_output_mux", "wave": "0.....1..."},
+      {"name": "rs", "wave": "=.........", "data": ["rs"]},
+      {"name": "rt", "wave": "=.........", "data": ["rt", "rt"]},
+      {"name": "alu_out", "wave": "=...=..=..", "data": ["0", "rs+rt", "rs > rt"]}
+    ],
+    "head": {
+      "text": "ALU Arithmetic Operation Waveform"
+    }
+  }

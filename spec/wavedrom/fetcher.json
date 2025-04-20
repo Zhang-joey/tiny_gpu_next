@@ -1,0 +1,17 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p........"},
+      {"name": "reset", "wave": "10......."},
+      {"name": "core_state", "wave": "2.2...2.x", "data": ["IDLE", "FETCH", "DECODE"]},
+          {"name": "fetcher_state", "wave": "2..2.2.2.", "data": ["IDLE", "FETCHING", "FETCHED", "IDLE"]},
+      {"name": "current_pc", "wave": "2.......", "data": ["pc"]},
+      {"name": "mem_read_valid", "wave": "0..1.0.."},
+      {"name": "mem_read_address", "wave": "=..=....", "data": ["0x00", "pc"]},
+      {"name": "mem_read_ready", "wave": "0...10.."},
+      {"name": "mem_read_data", "wave": "x...=..", "data": ["INST"]},
+      {"name": "instruction", "wave": "=....=..", "data": ["", "INST"]}
+    ],
+    "head": {
+      "text": "Fetcher波形图"
+    }
+  }

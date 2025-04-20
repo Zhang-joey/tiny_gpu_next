@@ -1,0 +1,22 @@
+{
+    "signal": [
+      {"name": "clk", "wave": "p................"},
+      {"name": "reset", "wave": "10..............."},
+      {"name": "start", "wave": "0.1.0............"},
+      {"name": "core_state", "wave": "2..2...222...222.", "data": ["IDLE", "FETCH", "DEC", "REQ", "WAIT", "EXE", "UPD", "FETCH"]},
+      {"name": "fetcher_state", "wave": "2...2.2.2........", "data": ["IDLE", "FETCHING", "FETCHED", "IDLE"]},
+      {"name": "lsu_state[0]", "wave": "2........22.2.2..", "data": ["IDLE", "REQ", "WAITING", "DONE", "IDLE", "IDLE"]},
+      {"name": "lsu_state[1]", "wave": "2........22.2.2..", "data": ["IDLE", "REQ", "WAITING", "DONE", "IDLE", "IDLE"]},
+      {"name": "lsu_state[2]", "wave": "2........22.2.2..", "data": ["IDLE", "REQ", "WAITING", "DONE", "IDLE", "IDLE"]},
+      {"name": "lsu_state[3]", "wave": "2................", "data": ["IDLE"]},
+      {"name": "current_pc", "wave": "2.2.............=", "data": ["0x00", "pc","imm"]},
+      {"name": "next_pc[0]", "wave": "x.............=..", "data": ["imm"]},
+      {"name": "next_pc[1]", "wave": "x.............=..", "data": ["imm"]},
+      {"name": "next_pc[2]", "wave": "x.............=..", "data": ["imm"]},
+      {"name": "next_pc[3]", "wave": "x.............=..", "data": ["imm"]},
+      {"name": "done", "wave": "0................"}
+    ],
+    "head": {
+      "text": "Scheduler波形图"
+    }
+  }

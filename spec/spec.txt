@@ -1,0 +1,564 @@
+LSU
+interface
+input	clk,
+input 	reset,
+input 	enable,				 //线程是否启用
+
+input	[2:0] 	core_state,	    //线程所属core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+
+// Memory Control Sgiansl
+input  decoded_mem_read_enable	// decoder输出的控制信号，指令为LDR时为高
+input  decoded_mem_write_enable// decoder输出的控制信号，指令为STR时为高
+
+// isters
+input 	[7:0] 	rs,				// rs寄存器数值
+input 	[7:0] 	rt,				// rs寄存器数值
+
+// Data Memory, 用于内存访问
+output			mem_read_valid,			//内存读valid, 与内存握手通信
+output	 [7:0] 	mem_read_address,		//内存读地址
+input			mem_read_ready,			//内存读ready, 与内存握手通信
+input	 [7:0] 	mem_read_data,			//内存读数据
+output			mem_write_valid,        //内存写valid, 与内存握手通信
+output	 [7:0]	mem_write_address,		//内存写地址
+output	 [7:0] 	mem_write_data,			//内存写数据
+input 			mem_write_ready,		//内存写ready, 与内存握手通信
+
+// LSU Outputs
+output	[1:0] 	lsu_state,		//LSU执行状态
+    IDLE        = 	2'b00,		//空闲
+    REQUESTING	= 	2'b01, 		//请求
+    WAITING   	= 	2'b10, 		//等待
+    DONE        = 	2'b11;		//完成
+output	[7:0] 	lsu_out		//从mem中读取到的数据
+
+
+
+logic
+lsu_state
+IDLE:
+    enable为高, 且decoded_mem_read_enable或decoded_mem_write_enable为高, 
+    当core_state == REQUEST时, 进入REQUESTING
+    
+REQUESTING:
+    读操作
+        拉高mem_read_valid
+        读地址设为rs寄存器数值(?)
+        进入WAITING
+    写操作
+        拉高mem_write_valid
+        读地址设为rs寄存器数值(?)
+        读数据设为rs寄存器数值(?)
+        进入WAITING
+
+WAITING:
+    等待mem_read_ready, mem_write_ready
+    握手后,若为读操作,则将读数据赋值给lsu_out,将对应valid信号拉低,进入DONE
+
+DONE:
+    core_state == UPDATE时, 返回IDLE空闲状态
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+ALU
+interface
+input               clk,
+input               reset,
+input               enable,                     //线程是否启用
+
+input	[2:0] 	core_state,	    //线程所属core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+    
+input       [1:0]   decoded_alu_arithmetic_mux, //decoder输出的控制信号, 选择计算功能
+    ADD = 2'b00,
+    SUB = 2'b01,
+    MUL = 2'b10,
+    DIV = 2'b11;
+input               decoded_alu_output_mux,     //decoder输出的控制信号, 为1时输出比较器结果, 为0时输出算术器结果
+    
+input       [7:0]   rs,         //rs寄存器数值
+input       [7:0]   rt,         //rs寄存器数值
+output      [7:0]   alu_out     //结果输出
+
+logic
+enable为高, 当core_state == EXECUTE时,
+    若decoded_alu_output_mux == 1, 输出比较器结果
+    若decoded_alu_output_mux == 0, 根据decoded_alu_arithmetic_mux输出对应计算结果
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+ister Files
+interface
+parameter THREADS_PER_BLOCK = 4,            //blockdim
+parameter THREAD_ID = 0,                    //threadidx
+parameter DATA_BITS = 8                     //数据位宽
+
+input   clk,
+input   reset,
+input   enable,                             //线程是否启用
+
+// Kernel Execution
+input   [7:0] block_id,                     //blockidx, 由dispatch输出, 保存在r[13]
+
+// State
+input	[2:0] 	core_state,	    //线程所属core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+
+// Instruction Signals
+input   [3:0]           decoded_rd_address,         //decoder输出, rd编号
+input   [3:0]           decoded_rs_address,         //decoder输出, rs编号
+input   [3:0]           decoded_rt_address,         //decoder输出, rt编号
+
+// Control Signals
+input                   decoded__write_enable,   //decoder输出, 允许写寄存器,CAL指令/LDR/CONST时为高
+input   [1:0]           decoded__input_mux,      //decoder输出, 选择写数据来源
+    ARITHMETIC = 2'b00,
+    MEMORY = 2'b01,
+    CONSTANT = 2'b10;
+input   [DATA_BITS-1:0] decoded_immediate,          //decoder输出,指令为CONST时,对应立即数部分
+
+// Thread Unit Outputs
+input   [DATA_BITS-1:0] alu_out,                    //alu输出,计算结果
+input   [DATA_BITS-1:0] lsu_out,                    //lsu输出,读取数据
+
+// isters
+output  [7:0] rs,       //rs寄存器数值
+output  [7:0] rt        //rt寄存器数值
+
+logic
+创建位宽为DATA_BITS(8) bit, 大小为16(4bit地址)的寄存器阵列
+reset阶段
+    r[14]存放blockdim
+    r[15]存放threadidx
+    其他寄存器值全为0
+enable为高  
+    r[13]存放blockidx(应该由哪个core_state执行??)
+    core_state == REQUEST时, 从寄存器组中读取rs, rt寄存器数值  
+    core_state == UPDATE时, decoded__write_enable == 1且decoded_rd_address < 13时,
+        根据decoded__input_mux将对应数据写入寄存器
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+PC
+interface
+parameter DATA_MEM_DATA_BITS = 8,       //数据位宽
+parameter PROGRAM_MEM_ADDR_BITS = 8     //地址位宽
+
+input               clk,
+input               reset,
+input               enable,             //线程是否启用
+
+input	[2:0] 	core_state,	    //线程所属core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+
+// Control Signals
+input   [2:0]                       decoded_nzp,                //decoder输出, 指令为BRnzp时, 指令中nzp的值
+input   [DATA_MEM_DATA_BITS-1:0]    decoded_immediate,          //decoder输出, 指令为BRnzp时, 指令中立即数的值
+input                               decoded_nzp_write_enable,   //decoder输出, 允许更改nzp寄存器, 指令为CMP时为高
+input                               decoded_pc_mux,             //decoder输出, 允许更改pc寄存器, 指令为BRnzp时为高
+
+// ALU Output - used for alu_out[2:0] to compare with NZP ister
+input   [DATA_MEM_DATA_BITS-1:0]    alu_out,        //alu输出,指令为CMP使用
+
+// Current & Next PCs
+input   [PROGRAM_MEM_ADDR_BITS-1:0] current_pc,     //当前pc
+output  [PROGRAM_MEM_ADDR_BITS-1:0] next_pc         //下一个pc(默认为pc+1)
+
+logic
+当enable为高时
+    core_state == EXECUTE
+        若非BRnzp指令, next_pc = pc + 1
+        若为BRnzp指令, 如果nzp寄存器与decoded_nzp匹配(为1的位相同),
+            next_pc = decoded_immediate
+            否则next_pc = pc + 1
+    core_state == UPDATE
+        若为CMP指令,则将alu_out的低三位赋给nzp寄存器
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+Thread
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+decoder
+interface
+input    clk,
+input    reset,
+
+input	[2:0] 	core_state,	    //core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+input   [15:0]  instruction,    //需要译码的指令
+    instruction[15:12]:
+        NOP     = 4'b0000,
+        BRnzp   = 4'b0001,
+        CMP     = 4'b0010,
+        ADD     = 4'b0011,
+        SUB     = 4'b0100,
+        MUL     = 4'b0101,
+        DIV     = 4'b0110,
+        LDR     = 4'b0111,
+        STR     = 4'b1000,
+        CONST   = 4'b1001,
+        RET     = 4'b1111;
+// Instruction Signals
+//isters
+output  [3:0] decoded_rd_address,               //rd寄存器编号
+output  [3:0] decoded_rs_address,               //rs寄存器编号
+output  [3:0] decoded_rt_address,               //rt寄存器编号
+//pc
+output  [2:0] decoded_nzp,                      //BRnzp指令中指定的nzp的值
+output  [7:0] decoded_immediate,                //BRnzp指令指令的跳转地址
+
+// Control Signals
+//isters
+output          decoded__write_enable,       //寄存器写使能
+output  [1:0]   decoded__input_mux,          //寄存器写数据来源
+    ARITHMETIC  = 2'b00,
+    MEMORY      = 2'b01,
+    CONSTANT    = 2'b10;
+//lsu
+output          decoded_mem_read_enable,        //LDR指令, 执行读内存
+output          decoded_mem_write_enable,       //STR指令, 执行写内存
+
+//pc
+output          decoded_nzp_write_enable,       //CMP指令, 允许写nzp寄存器
+output          decoded_pc_mux,                 //BRnzp指令, 允许更改pc寄存器
+
+//alu
+output  [1:0]   decoded_alu_arithmetic_mux,     //选择计算功能
+output          decoded_alu_output_mux,         //选择输出比较器结果还是算术器结果
+
+// Return (finished executing thread)
+output  decoded_ret                             //RET指令, 线程执行完成
+
+logic
+reset阶段,所有输出置零
+core_state = DECODE时, 译码出所有的指令信号和控制信号
+    decoded_rd_address  <= instruction[11:8];
+    decoded_rs_address  <= instruction[7:4];
+    decoded_rt_address  <= instruction[3:0];
+    decoded_immediate   <= instruction[7:0];
+    decoded_nzp         <= instruction[11:9];
+
+    // Control signals reset on every decode and set conditionally by instruction
+    decoded__write_enable    <= 0;
+    decoded_mem_read_enable     <= 0;
+    decoded_mem_write_enable    <= 0;
+    decoded_nzp_write_enable    <= 0;
+    decoded__input_mux       <= 0;
+    decoded_alu_arithmetic_mux  <= 0;
+    decoded_alu_output_mux      <= 0;
+    decoded_pc_mux              <= 0;
+    decoded_ret                 <= 0;
+
+    // Set the control signals for each instruction
+    case (instruction[15:12])
+        NOP: begin 
+            // no-op
+        end
+        BRnzp: begin 
+            decoded_pc_mux <= 1;
+        end
+        CMP: begin 
+            decoded_alu_output_mux <= 1;
+            decoded_nzp_write_enable <= 1;
+        end
+        ADD: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b00;
+            decoded_alu_arithmetic_mux <= 2'b00;
+        end
+        SUB: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b00;
+            decoded_alu_arithmetic_mux <= 2'b01;
+        end
+        MUL: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b00;
+            decoded_alu_arithmetic_mux <= 2'b10;
+        end
+        DIV: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b00;
+            decoded_alu_arithmetic_mux <= 2'b11;
+        end
+        LDR: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b01;
+            decoded_mem_read_enable <= 1;
+        end
+        STR: begin 
+            decoded_mem_write_enable <= 1;
+        end
+        CONST: begin 
+            decoded__write_enable <= 1;
+            decoded__input_mux <= 2'b10;
+        end
+        RET: begin 
+            decoded_ret <= 1;
+        end
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+fetcher
+interface
+parameter PROGRAM_MEM_ADDR_BITS = 8,
+parameter PROGRAM_MEM_DATA_BITS = 16
+
+input   clk,
+input   reset,
+
+// Execution State
+input	[2:0] 	core_state,	    //core的执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+input   [7:0] current_pc,       //当前pc地址
+
+// Program Memory
+output                              mem_read_valid,     //发起从mem中读取指令请求
+output  [PROGRAM_MEM_ADDR_BITS-1:0] mem_read_address,   //读取指令地址, =current_pc
+input                               mem_read_ready,     //输入内存读ready,用于握手
+input   [PROGRAM_MEM_DATA_BITS-1:0] mem_read_data,      //输入内存读数据
+
+// Fetcher Output
+output  [2:0]                       fetcher_state,      //当前fetcher状态
+    IDLE        = 3'b000, 
+    FETCHING    = 3'b001, 
+    FETCHED     = 3'b010;
+    
+output  [PROGRAM_MEM_DATA_BITS-1:0] instruction         //输出获取到的指令
+
+logic
+fetcher_state == IDLE
+    当core_state == FETCH时,拉高mem_read_valid,将current_pc赋给mem_read_address,进入FETCHING状态
+fetcher_state == FETCHING
+    当接受到mem_read_ready为高时,握手成功,拉低mem_read_valid,将mem_read_data输出为instruction,进入FATCHED状态
+fetcher_state == FETCHED
+    当core_state == DECODE时,回到IDLE状态
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+scheduler
+interface
+parameter THREADS_PER_BLOCK = 4
+
+input   clk,
+input   reset,
+input   start,  //输入启动信号
+
+// Control Signals
+input           decoded_mem_read_enable,            //decoder输出的控制信号，指令为LDR时为高
+input           decoded_mem_write_enable,           //decoder输出的控制信号，指令为STR时为高
+input           decoded_ret,                        //decoder输出的控制信号, 指令为RET时为高
+
+// Memory Access State  
+input   [2:0]   fetcher_state,                      //fetcher的执行状态
+    IDLE        = 3'b000, 
+    FETCHING    = 3'b001, 
+    FETCHED     = 3'b010;
+
+input   [1:0]   lsu_state [THREADS_PER_BLOCK-1:0],  //lsu的指令状态
+    IDLE        = 	2'b00,	
+    REQUESTING	= 	2'b01, 	
+    WAITING   	= 	2'b10, 	
+    DONE        = 	2'b11;	
+
+// Current & Next PC
+output  [7:0]   current_pc,                         //当前pc地址
+input   [7:0]   next_pc [THREADS_PER_BLOCK-1:0],    //下一个pc地址
+
+// Execution State
+output  [2:0]   core_state,                         //core执行状态
+    IDLE 		= 	3'b000,        	// 空闲
+    FETCH 		= 	3'b001,       	// 取值，从指令内存中获取指令
+    DECODE 		= 	3'b010,      	// 从指令中译码出控制信号
+    REQUEST	 	= 	3'b011,   	  	// 从寄存器或内存中获取数据
+    WAIT 		= 	3'b100,        	// 等待内存的响应
+    EXECUTE 	= 	3'b101,    		// 执行ALU或PC计算
+    UPDATE 		= 	3'b110,      	// 更新寄存器, NZP, and PC
+    DONE 		= 	3'b111;      	// 完成该block中的执行  
+output  done                                        //完成信号
+
+logic
+reset阶段
+    current_pc置为0, core_state为IDLE, done为低
+core_state == IDLE
+    当start拉高时, 进入FETCHING状态
+core_state == FETCH
+    当fetch_state == FETCHED时,即完成取值,进入DECODE状态
+core_state == DECODE
+    decoder在该周期内完成译码,直接进入REQUEST状态
+core_state == REQUEST
+    直接进入WAIT状态
+core_state == WAIT
+    当所有lsu都不处于REQUESTING或WAITING状态时(enbale为高的lsu全部处于DONE状态)
+    进入EXECUTE状态
+core_state == EXECUTE
+    ALU在该周期完成计算,直接进入UPDATE阶段
+core_state == UPDATE
+    该周期内完成寄存器, NZP, PC的更新
+    若为非RET指令,更新current_pc为next_pc,进入FETCH状态执行下一条指令
+    若为RET指令, 直接进入DONE,结束执行
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+core
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+dispatch
+interface
+input wire clk,
+input wire reset,
+input wire start,               //启动信号
+
+// Kernel Metadata
+input wire [7:0] thread_count,  //输入总线程数
+
+// Core States
+input reg [NUM_CORES-1:0] core_done,                //core的完成信号
+output reg [NUM_CORES-1:0] core_start,              //core的启动信号
+output reg [NUM_CORES-1:0] core_reset,              //core的reset信号
+output reg [7:0] core_block_id [NUM_CORES-1:0],     //core对应的blcokIdx
+output reg [$clog2(THREADS_PER_BLOCK):0] core_thread_count [NUM_CORES-1:0],     //core内分配的线程数
+
+// Kernel Execution
+output reg done                 //完成信号
+
+logic
+total_blocks = thread_count // THREADS_PER_BLOCK    //将线程平分至2个core中
+
+reg [7:0] blocks_dispatched;                        // 需要分发的block个数
+reg [7:0] blocks_done;                              // 执行完成的block个数
+reg start_execution;                                // 是否已经启动
+
+reset阶段, core_reset所有位拉高,其他信号置零
+start信号为高时
+    若start_execution == 0, 拉高start_execution和core_reset的所有位
+    若core_reset为高,则
+        拉低core_reset
+        若blocks_dispatched < total_blocks(复位之后第一次分配),
+            拉高core_start
+            分配blockidx
+            分配core内有效线程数
+        若core_done == 1, core_start == 1, blocks_done增加
+    若blocks_done == total_blocks, 所有core全部完成,则拉高done信号
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+DCR
+interface
+input wire clk,
+input wire reset,
+
+input wire device_control_write_enable,
+input wire [7:0] device_control_data,
+output wire [7:0] thread_count
+
+logic
+device_control_write_enable为高时
+    将device_control_data写入thread_count寄存器
+
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+controller(mem driver)
+interface
+parameter ADDR_BITS        = 8,
+parameter DATA_BITS        = 16,
+parameter NUM_CONSUMERS    = 4, // 向驱动请求访存的数量, data mem为NUM_CORES * THREADS_PER_BLOCK, program mem为NUM_CORES
+parameter NUM_CHANNELS     = 1, // 访问内存的通道数量
+parameter WRITE_ENABLE     = 1  // 是否允许写内存, data mem为1, program mem为0
+
+input wire clk,
+input wire reset,
+
+// Consumer Interface (Fetchers / LSUs)
+input  reg  [NUM_CONSUMERS-1:0]         consumer_read_valid,
+input  reg  [ADDR_BITS-1:0]             consumer_read_address   [NUM_CONSUMERS-1:0],
+output reg  [NUM_CONSUMERS-1:0]         consumer_read_ready,
+output reg  [DATA_BITS-1:0]             consumer_read_data      [NUM_CONSUMERS-1:0],
+input  reg  [NUM_CONSUMERS-1:0]         consumer_write_valid,
+input  reg  [ADDR_BITS-1:0]             consumer_write_address  [NUM_CONSUMERS-1:0],
+input  reg  [DATA_BITS-1:0]             consumer_write_data     [NUM_CONSUMERS-1:0],
+output reg  [NUM_CONSUMERS-1:0]         consumer_write_ready,
+
+// Memory Interface (Data / Program)
+output reg  [NUM_CHANNELS-1:0]          mem_read_valid,
+output reg  [ADDR_BITS-1:0]             mem_read_address    [NUM_CHANNELS-1:0],
+input  reg  [NUM_CHANNELS-1:0]          mem_read_ready,
+input  reg  [DATA_BITS-1:0]             mem_read_data       [NUM_CHANNELS-1:0],
+output reg  [NUM_CHANNELS-1:0]          mem_write_valid,
+output reg  [ADDR_BITS-1:0]             mem_write_address   [NUM_CHANNELS-1:0],
+output reg  [DATA_BITS-1:0]             mem_write_data      [NUM_CHANNELS-1:0],
+input  reg  [NUM_CHANNELS-1:0]          mem_write_ready
+
+//每个访问内存通道具有一个状态寄存器
+reg  [2:0]                              controller_state [NUM_CHANNELS-1:0]; 
+    IDLE = 3'b000, 
+    READ_WAITING = 3'b010, 
+    WRITE_WAITING = 3'b011,
+    READ_RELAYING = 3'b100,
+    WRITE_RELAYING = 3'b101;
+reg  [$clog2(NUM_CONSUMERS)-1:0]        current_consumer [NUM_CHANNELS-1:0];    // 每个通道在处理哪一个consumer的请求
+reg  [NUM_CONSUMERS-1:0]                channel_serving_consumer                // 多个通道之间共享,确保多个通道不会处理请求
+
+logic
+reset阶段, 所有信号置为0
+每个channel各自独立轮询执行
+    controller_state == IDLE
+        轮询consumer查看是否有consumer发起read_valid或write_valid请求, 并且该请求还未被处理(consumer_read_valid[j] && !channel_serving_consumer[j])
+        优先编码, 如果轮询到有效请求,将channel_serving_consumer对应位拉高, 设置current_consumer,并在该通道对内存发起访问
+        进入WAITING状态
+    controller_state == READ_WAITING/WRITE_WAITING
+        当对应通道的内存ready信号为高时
+            拉低mem_valid信号
+            拉高consumer_ready信号,若为读则给consumer_data赋值
+            进入RELAYING状态
+    controller_state == READ_RELAYING/WRITE_RELAYING
+        当对应consumer的valid信号拉低后,
+            释放channel_serving_consumer
+            拉低consumer_ready信号
+            进入IDLE状态
