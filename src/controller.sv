@@ -116,14 +116,14 @@ module controller #(
                     // Wait until consumer acknowledges it received response, then reset
                     READ_RELAYING: begin
                         if (consumer_read_valid[current_consumer[i]] && consumer_read_ready[current_consumer[i]]) begin 
-                            channel_serving_consumer[current_consumer[i]] = 0;
+                            channel_serving_consumer[current_consumer[i]] <= 0;
                             consumer_read_ready[current_consumer[i]] <= 0;
                             controller_state[i] <= IDLE;
                         end
                     end
                     WRITE_RELAYING: begin 
                         if (consumer_write_valid[current_consumer[i]] &&  consumer_write_ready[current_consumer[i]]) begin 
-                            channel_serving_consumer[current_consumer[i]] = 0;
+                            channel_serving_consumer[current_consumer[i]] <= 0;
                             consumer_write_ready[current_consumer[i]] <= 0;
                             controller_state[i] <= IDLE;
                         end
