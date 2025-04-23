@@ -26,6 +26,9 @@ module registers #(
 
     // Control Signals
     input reg decoded_reg_write_enable,
+    //[modify] add decoded_nzp_write_enable, decoded_nzp to input
+    input reg decoded_nzp_write_enable,
+    input reg [2:0] decoded_nzp,
     input reg [1:0] decoded_reg_input_mux,
     input reg [DATA_BITS-1:0] decoded_immediate,
 
@@ -34,14 +37,15 @@ module registers #(
     input reg [DATA_BITS-1:0] lsu_out,
 
     // Registers
-    //[modify] add nzp to registers module
+    //[modify] add nzp to registers output
     output reg [3:0] nzp,
     output reg [7:0] rs,
     output reg [7:0] rt
 );
-    localparam ARITHMETIC = 2'b00,
-        MEMORY = 2'b01,
-        CONSTANT = 2'b10;
+    localparam ARITHMETIC   = 2'b00,
+               MEMORY       = 2'b01,
+               CONSTANT     = 2'b10,
+               MOVC         = 2'b11;
 
     // 16 registers per thread (13 free registers and 3 read-only registers)
     reg [7:0] registers[15:0];
@@ -111,6 +115,12 @@ module registers #(
                         CONSTANT: begin 
                             // CONST
                             registers[decoded_rd_address] <= decoded_immediate;
+                        end
+                        MOVC: begin 
+                            // MOVC
+                            if ((nzp & decoded_nzp) != 3'b0) begin
+                                registers[decoded_rd_address] <= rs;
+                            end
                         end
                     endcase
                 end

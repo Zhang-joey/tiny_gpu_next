@@ -119,7 +119,7 @@ module test_core;
         reset = 1;
         start = 0;
         block_id = 0;
-        thread_count = 3;
+        thread_count = 4;
         program_mem_read_ready = 0;
         for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
             data_mem_read_ready[i] = 0;
@@ -132,29 +132,42 @@ module test_core;
         // 2. Add 1 to it
         // 3. Store the result back to memory
         // 4. Return
+
+        //CONST R0 4
+        program_memory[0] = {4'b1001, 4'd0, 8'd2};
+
+        //CONST R1 5
+        program_memory[1] = {4'b1001, 4'd1, 8'd5};
+
+        //CMP R0, R1
+        program_memory[2] = {4'b0010, 4'd0, 4'd15, 4'd0};
+
+        //MOVC R0, R1 0010
+        program_memory[3] = {4'b1010, 4'd0, 4'd1, 4'b0010};
+
         //NOP
-        program_memory[0] = 16'h0FFE;
+        program_memory[4] = 16'h0FFE;
         
         // LDR R0, [R14] - Load from memory address in R14 (blockDim) into R0
-        program_memory[1] = 16'h700E;
+        program_memory[5] = 16'h700E;
         
         // ADD R0, R0, R15 - Add R0 and R15 (threadIdx) and store in R0
-        program_memory[2] = 16'h300F;
+        program_memory[6] = 16'h300F;
         
         // STR R0, R14 - Store R14 to Mem[R0]
-        program_memory[3] = 16'h800E;
+        program_memory[7] = 16'h800E;
         
         //CMP R0, R14 
-        program_memory[4] = 16'h200E;
+        program_memory[8] = 16'h200E;
         
         //BRnzp lt 15 - if R0 < R14, PC = 15
-        program_memory[5] = 16'h120f;
+        program_memory[9] = 16'h120f;
         
         //CONST R8 256
-        program_memory[15] = 16'h98ff;
+        program_memory[10] = 16'h98ff;
         
         // RET - Return
-        program_memory[16] = 16'hF000;
+        program_memory[15] = 16'hF000;
         
         // Initialize data memory
         for (int i = 0; i < 16; i++) begin
@@ -189,13 +202,5 @@ module test_core;
         #100;
         $finish;
     end
-    
-    // Monitor core state
-//    always @(posedge clk) begin
-//        if (!reset) begin
-//            $display("Time=%0t: core_state=%b, current_pc=%h", 
-//                    $time, core_inst.core_state, core_inst.current_pc);
-//        end
-//    end
     
 endmodule 

@@ -53,6 +53,7 @@ module core #(
     reg [1:0]  lsu_state[THREADS_PER_BLOCK-1:0];
     reg [7:0]  lsu_out  [THREADS_PER_BLOCK-1:0];
     reg [7:0]  alu_out  [THREADS_PER_BLOCK-1:0];
+    reg [2:0]  nzp      [THREADS_PER_BLOCK-1:0];
     
     // Decoded Instruction Signals
     reg [3:0]  decoded_rd_address;
@@ -174,12 +175,15 @@ module core #(
                 .THREAD_ID                  (i                  ),
                 .DATA_BITS                  (DATA_MEM_DATA_BITS )
             ) register_instance (   
+                //[modify] add nzp to output, add decoded_nzp_write_enable to input
                 .clk                        (clk                    ),
                 .reset                      (reset                  ),
                 .enable                     (i < thread_count       ),
                 .block_id                   (block_id               ),
                 .core_state                 (core_state             ),
                 .decoded_reg_write_enable   (decoded_reg_write_enable),
+                .decoded_nzp_write_enable   (decoded_nzp_write_enable),
+                .decoded_nzp                (decoded_nzp            ),
                 .decoded_reg_input_mux      (decoded_reg_input_mux  ),
                 .decoded_rd_address         (decoded_rd_address     ),
                 .decoded_rs_address         (decoded_rs_address     ),
@@ -187,6 +191,7 @@ module core #(
                 .decoded_immediate          (decoded_immediate      ),
                 .alu_out                    (alu_out[i]             ),
                 .lsu_out                    (lsu_out[i]             ),
+                .nzp                        (nzp[i]                 ),
                 .rs                         (rs[i]                  ),
                 .rt                         (rt[i]                  )
             );
@@ -196,15 +201,15 @@ module core #(
                 .DATA_MEM_DATA_BITS         (DATA_MEM_DATA_BITS     ),
                 .PROGRAM_MEM_ADDR_BITS      (PROGRAM_MEM_ADDR_BITS  )
             ) pc_instance ( 
+                //[modify] change nzp to input, delete alu_out, delete decoded_nzp_write_enable
                 .clk                        (clk                    ),
                 .reset                      (reset                  ),
                 .enable                     (i < thread_count       ),
                 .core_state                 (core_state             ),
                 .decoded_nzp                (decoded_nzp            ),
                 .decoded_immediate          (decoded_immediate      ),
-                .decoded_nzp_write_enable   (decoded_nzp_write_enable),
                 .decoded_pc_mux             (decoded_pc_mux         ),
-                .alu_out                    (alu_out[i]             ),
+                .nzp                        (nzp[i]                 ),
                 .current_pc                 (current_pc             ),
                 .next_pc                    (next_pc[i]             )
             );

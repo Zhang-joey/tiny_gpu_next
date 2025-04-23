@@ -41,6 +41,7 @@ module decoder (
         LDR = 4'b0111,
         STR = 4'b1000,
         CONST = 4'b1001,
+        MOVC = 4'b1010,
         RET = 4'b1111;
 
     always @(posedge clk) begin 
@@ -67,7 +68,6 @@ module decoder (
                 decoded_rs_address <= instruction[7:4];
                 decoded_rt_address <= instruction[3:0];
                 decoded_immediate <= instruction[7:0];
-                decoded_nzp <= instruction[11:9];
 
                 // Control signals reset on every decode and set conditionally by instruction
                 decoded_reg_write_enable <= 0;
@@ -87,6 +87,7 @@ module decoder (
                     end
                     BRnzp: begin 
                         decoded_pc_mux <= 1;
+                        decoded_nzp <= instruction[11:9];
                     end
                     CMP: begin 
                         decoded_alu_output_mux <= 1;
@@ -123,6 +124,11 @@ module decoder (
                     CONST: begin 
                         decoded_reg_write_enable <= 1;
                         decoded_reg_input_mux <= 2'b10;
+                    end
+                    MOVC: begin 
+                        decoded_reg_write_enable <= 1;
+                        decoded_reg_input_mux <= 2'b11;
+                        decoded_nzp <= instruction[3:1];
                     end
                     RET: begin 
                         decoded_ret <= 1;

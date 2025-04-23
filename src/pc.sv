@@ -21,9 +21,10 @@ module pc #(
     // Control Signals
     input reg [2:0] decoded_nzp,
     input reg [DATA_MEM_DATA_BITS-1:0] decoded_immediate,
-    input reg decoded_nzp_write_enable,
+    //[modify] delete decoded_nzp write enable
     input reg decoded_pc_mux, 
-    input reg [3:0] nzp,
+    //[modify] change nzp to input
+    input reg [2:0] nzp,
 
     //[modify] delete aluout and nzp in pc module
 
