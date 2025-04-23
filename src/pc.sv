@@ -23,15 +23,14 @@ module pc #(
     input reg [DATA_MEM_DATA_BITS-1:0] decoded_immediate,
     input reg decoded_nzp_write_enable,
     input reg decoded_pc_mux, 
+    input reg [3:0] nzp,
 
-    // ALU Output - used for alu_out[2:0] to compare with NZP register
-    input reg [DATA_MEM_DATA_BITS-1:0] alu_out,
+    //[modify] delete aluout and nzp in pc module
 
     // Current & Next PCs
     input reg [PROGRAM_MEM_ADDR_BITS-1:0] current_pc,
     output reg [PROGRAM_MEM_ADDR_BITS-1:0] next_pc
 );
-    reg [2:0] nzp;
 
     always @(posedge clk) begin
         if (reset) begin
@@ -52,18 +51,7 @@ module pc #(
                     // By default update to PC + 1 (next line)
                     next_pc <= current_pc + 1;
                 end
-            end   
-
-            // Store NZP when core_state = UPDATE   
-            if (core_state == 3'b110) begin 
-                // Write to NZP register on CMP instruction
-                // [warning] unconnected port alu_out[7-3]
-                if (decoded_nzp_write_enable) begin
-                    nzp[2] <= alu_out[2];
-                    nzp[1] <= alu_out[1];
-                    nzp[0] <= alu_out[0];
-                end
-            end      
+            end     
         end
     end
 
