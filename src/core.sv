@@ -46,8 +46,10 @@ module core #(
     reg [15:0] instruction;
 
     // Intermediate Signals
-    reg [7:0]  current_pc;
-    wire [7:0] next_pc  [THREADS_PER_BLOCK-1:0];
+    //[modify] add thread_mask
+    reg [THREADS_PER_BLOCK-1:0] thread_mask;
+    reg [7:0]  current_pc   ;
+    reg [7:0]  next_pc      ;
     reg [7:0]  rs       [THREADS_PER_BLOCK-1:0];
     reg [7:0]  rt       [THREADS_PER_BLOCK-1:0];
     reg [1:0]  lsu_state[THREADS_PER_BLOCK-1:0];
@@ -125,9 +127,30 @@ module core #(
         .decoded_mem_write_enable   (decoded_mem_write_enable),
         .decoded_ret                (decoded_ret            ),
         .lsu_state                  (lsu_state              ),
-        .current_pc                 (current_pc             ),
-        .next_pc                    (next_pc                ),
+        //[modify] delete current_pc, next_pc
         .done                       (done                   )
+    );
+
+    //[modify] change pc module to be shared in a core
+    pc #(
+        //[modify] add thread_per_block
+        .THREADS_PER_BLOCK          (THREADS_PER_BLOCK      ),
+        .DATA_MEM_DATA_BITS         (DATA_MEM_DATA_BITS     ),
+        .PROGRAM_MEM_ADDR_BITS      (PROGRAM_MEM_ADDR_BITS  )
+    ) pc_instance ( 
+        //[modify] change nzp to input, delete alu_out, delete decoded_nzp_write_enable
+        .clk                        (clk                    ),
+        .reset                      (reset                  ),
+        //[modify] delete enable
+        .core_state                 (core_state             ),
+        .decoded_nzp                (decoded_nzp            ),
+        .decoded_immediate          (decoded_immediate      ),
+        .decoded_pc_mux             (decoded_pc_mux         ),
+        .nzp                        (nzp                    ),
+        //[modify] add thread_mask output
+        .thread_mask                (thread_mask            ),
+        .current_pc                 (current_pc             ),
+        .next_pc                    (next_pc                )
     );
 
     // Dedicated ALU, LSU, registers, & PC unit for each thread this core has capacity for
@@ -136,22 +159,24 @@ module core #(
         for (i = 0; i < THREADS_PER_BLOCK; i = i + 1) begin : threads
             // ALU
             alu alu_instance (
-                .clk                        (clk                        ),
-                .reset                      (reset                      ),
-                .enable                     (i < thread_count           ),
-                .core_state                 (core_state                 ),
-                .decoded_alu_arithmetic_mux (decoded_alu_arithmetic_mux),
-                .decoded_alu_output_mux     (decoded_alu_output_mux     ),
-                .rs                         (rs[i]                      ),
-                .rt                         (rt[i]                      ),
-                .alu_out                    (alu_out[i]                 )
+                .clk                        (clk                            ),
+                .reset                      (reset                          ),
+                //[modify] change enable to be controlled by thread_mask
+                .enable                     ((i < thread_count) && thread_mask[i]),
+                .core_state                 (core_state                     ),
+                .decoded_alu_arithmetic_mux (decoded_alu_arithmetic_mux     ),
+                .decoded_alu_output_mux     (decoded_alu_output_mux         ),
+                .rs                         (rs[i]                          ),
+                .rt                         (rt[i]                          ),
+                .alu_out                    (alu_out[i]                     )
             );
 
             // LSU
             lsu lsu_instance (
                 .clk                        (clk                        ),
                 .reset                      (reset                      ),
-                .enable                     (i < thread_count           ),
+                //[modify] change enable to be controlled by thread_mask
+                .enable                     ((i < thread_count) && thread_mask[i]),
                 .core_state                 (core_state                 ),
                 .decoded_mem_read_enable    (decoded_mem_read_enable    ),
                 .decoded_mem_write_enable   (decoded_mem_write_enable   ),
@@ -178,7 +203,8 @@ module core #(
                 //[modify] add nzp to output, add decoded_nzp_write_enable to input
                 .clk                        (clk                    ),
                 .reset                      (reset                  ),
-                .enable                     (i < thread_count       ),
+                //[modify] change enable to be controlled by thread_mask
+                .enable                     ((i < thread_count) && thread_mask[i]),
                 .block_id                   (block_id               ),
                 .core_state                 (core_state             ),
                 .decoded_reg_write_enable   (decoded_reg_write_enable),
@@ -197,22 +223,7 @@ module core #(
             );
 
             // Program Counter
-            pc #(
-                .DATA_MEM_DATA_BITS         (DATA_MEM_DATA_BITS     ),
-                .PROGRAM_MEM_ADDR_BITS      (PROGRAM_MEM_ADDR_BITS  )
-            ) pc_instance ( 
-                //[modify] change nzp to input, delete alu_out, delete decoded_nzp_write_enable
-                .clk                        (clk                    ),
-                .reset                      (reset                  ),
-                .enable                     (i < thread_count       ),
-                .core_state                 (core_state             ),
-                .decoded_nzp                (decoded_nzp            ),
-                .decoded_immediate          (decoded_immediate      ),
-                .decoded_pc_mux             (decoded_pc_mux         ),
-                .nzp                        (nzp[i]                 ),
-                .current_pc                 (current_pc             ),
-                .next_pc                    (next_pc[i]             )
-            );
+            //[modify] change pc module to be shared in a core
         end
     endgenerate
 endmodule

@@ -31,9 +31,7 @@ module scheduler #(
     input reg [2:0] fetcher_state,
     input reg [1:0] lsu_state [THREADS_PER_BLOCK-1:0],
 
-    // Current & Next PC
-    output reg [7:0] current_pc,
-    input reg [7:0] next_pc [THREADS_PER_BLOCK-1:0],
+    // [modify] delete current_pc, next_pc
 
     // Execution State
     output reg [2:0] core_state,
@@ -51,7 +49,6 @@ module scheduler #(
     
     always @(posedge clk) begin 
         if (reset) begin
-            current_pc <= 0;
             core_state <= IDLE;
             done <= 0;
             any_lsu_waiting <= 0;
@@ -101,11 +98,9 @@ module scheduler #(
                         // If we reach a RET instruction, this block is done executing
                         done <= 1;
                         core_state <= DONE;
-                    end else begin 
-                        // TODO: Branch divergence. For now assume all next_pc converge
-                        //[warning] unused next_pc[THREADS_PER_BLOCK-1:1]
-                        current_pc <= next_pc[0];
-
+                    end 
+                    //[modify] delete current_pc <= next_pc[0]
+                    else begin 
                         // Update is synchronous so we move on after one cycle
                         core_state <= FETCH;
                     end

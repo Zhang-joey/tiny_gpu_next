@@ -133,20 +133,23 @@ module test_core;
         // 3. Store the result back to memory
         // 4. Return
 
-        //CONST R0 4
+        //CONST R0 2
         program_memory[0] = {4'b1001, 4'd0, 8'd2};
 
         //CONST R1 5
         program_memory[1] = {4'b1001, 4'd1, 8'd5};
 
-        //CMP R0, R1
+        //CMP R15 R0
         program_memory[2] = {4'b0010, 4'd0, 4'd15, 4'd0};
-
+        
+        //BRnzp < to 15
+        program_memory[3] = 16'h120f;
+        
         //MOVC R0, R1 0010
-        program_memory[3] = {4'b1010, 4'd0, 4'd1, 4'b0010};
+        program_memory[4] = {4'b1010, 4'd0, 4'd1, 4'b0010};
 
         //NOP
-        program_memory[4] = 16'h0FFE;
+        program_memory[5] = 16'h0FFE;
         
         // LDR R0, [R14] - Load from memory address in R14 (blockDim) into R0
         program_memory[5] = 16'h700E;

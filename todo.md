@@ -1,8 +1,8 @@
 # TODO
 - [x] dispatch code division
-
-- [ ] branch cmp fusion
-
+- [x] MOVC instr
+- [x] extract pc
+- [ ] ssy and sync inst
 - [ ] warp schedule(core to warp)
 - [ ] cache between cores/warps
 - [ ] warp diverage
