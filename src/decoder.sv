@@ -23,6 +23,9 @@ module decoder (
     output reg decoded_mem_read_enable,            // Enable reading from memory
     output reg decoded_mem_write_enable,           // Enable writing to memory
     output reg decoded_nzp_write_enable,           // Enable writing to NZP register
+    //[modify] add decoded_sync, decoded_ssy
+    output reg decoded_sync,                       // Enable writing to sync
+    output reg decoded_ssy,                        // Enable writing to ssy
     output reg [1:0] decoded_reg_input_mux,        // Select input to register
     output reg [1:0] decoded_alu_arithmetic_mux,   // Select arithmetic operation
     output reg decoded_alu_output_mux,             // Select operation in ALU
@@ -31,17 +34,21 @@ module decoder (
     // Return (finished executing thread)
     output reg decoded_ret
 );
+    //[modify] add MOVC instruction
+    //[modify] add SSYN and SYNC instructions
     localparam NOP = 4'b0000,
-        BRnzp = 4'b0001,
-        CMP = 4'b0010,
-        ADD = 4'b0011,
-        SUB = 4'b0100,
-        MUL = 4'b0101,
-        DIV = 4'b0110,
-        LDR = 4'b0111,
-        STR = 4'b1000,
-        CONST = 4'b1001,
-        MOVC = 4'b1010,
+        BRnzp   = 4'b0001,
+        CMP     = 4'b0010,
+        ADD     = 4'b0011,
+        SUB     = 4'b0100,
+        MUL     = 4'b0101,
+        DIV     = 4'b0110,
+        LDR     = 4'b0111,
+        STR     = 4'b1000,
+        CONST   = 4'b1001,
+        MOVC    = 4'b1010,
+        SSY     = 4'b1011,
+        SYNC    = 4'b1100,
         RET = 4'b1111;
 
     always @(posedge clk) begin 
@@ -55,6 +62,8 @@ module decoder (
             decoded_mem_read_enable <= 0;
             decoded_mem_write_enable <= 0;
             decoded_nzp_write_enable <= 0;
+            decoded_sync <= 0;
+            decoded_ssy <= 0;
             decoded_reg_input_mux <= 0;
             decoded_alu_arithmetic_mux <= 0;
             decoded_alu_output_mux <= 0;
@@ -79,6 +88,8 @@ module decoder (
                 decoded_alu_output_mux <= 0;
                 decoded_pc_mux <= 0;
                 decoded_ret <= 0;
+                decoded_sync <= 0;
+                decoded_ssy <= 0;
 
                 // Set the control signals for each instruction
                 case (instruction[15:12])
@@ -125,10 +136,19 @@ module decoder (
                         decoded_reg_write_enable <= 1;
                         decoded_reg_input_mux <= 2'b10;
                     end
+                    //[modify] add MOVC instruction
                     MOVC: begin 
                         decoded_reg_write_enable <= 1;
                         decoded_reg_input_mux <= 2'b11;
                         decoded_nzp <= instruction[3:1];
+                    end
+                    //[modify] add SSYN and SYNC instructions
+                    SSY: begin 
+                        decoded_ssy <= 1;
+                        decoded_nzp <= instruction[11:9];
+                    end
+                    SYNC: begin 
+                        decoded_sync <= 1;
                     end
                     RET: begin 
                         decoded_ret <= 1;

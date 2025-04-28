@@ -142,20 +142,32 @@ module test_core;
         //CMP R15 R0
         program_memory[2] = {4'b0010, 4'd0, 4'd15, 4'd0};
         
+        //SSY < else to 6
+        program_memory[3] = 16'hb206;
+        
+        //CONST R0 5
+        program_memory[4] = {4'b1001, 4'd0, 8'd5};
+        
+        //SYNC
+        program_memory[5] = {4'b1100, 12'b0};
+        
+        //CONST R0 6
+        program_memory[6] = {4'b1001, 4'd0, 8'd6};
+        
         //BRnzp < to 15
-        program_memory[3] = 16'h120f;
+        //program_memory[3] = 16'h120f;
         
         //MOVC R0, R1 0010
-        program_memory[4] = {4'b1010, 4'd0, 4'd1, 4'b0010};
+        //program_memory[4] = {4'b1010, 4'd0, 4'd1, 4'b0010};
 
         //NOP
-        program_memory[5] = 16'h0FFE;
+        //program_memory[5] = 16'h0FFE;
         
         // LDR R0, [R14] - Load from memory address in R14 (blockDim) into R0
-        program_memory[5] = 16'h700E;
+        //program_memory[5] = 16'h700E;
         
         // ADD R0, R0, R15 - Add R0 and R15 (threadIdx) and store in R0
-        program_memory[6] = 16'h300F;
+        // program_memory[6] = 16'h300F;
         
         // STR R0, R14 - Store R14 to Mem[R0]
         program_memory[7] = 16'h800E;
