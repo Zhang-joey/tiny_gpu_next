@@ -8,7 +8,7 @@ module decoder (
     input wire clk,
     input wire reset,
 
-    input reg [2:0] core_state,
+    input reg [3:0] core_state,
     input reg [15:0] instruction,
     
     // Instruction Signals
@@ -30,6 +30,8 @@ module decoder (
     output reg [1:0] decoded_alu_arithmetic_mux,   // Select arithmetic operation
     output reg decoded_alu_output_mux,             // Select operation in ALU
     output reg decoded_pc_mux,                     // Select source of next PC
+    //[modify] add decoded_jump
+    output reg decoded_jump,                       // Enable writing to jump
 
     // Return (finished executing thread)
     output reg decoded_ret
@@ -49,7 +51,9 @@ module decoder (
         MOVC    = 4'b1010,
         SSY     = 4'b1011,
         SYNC    = 4'b1100,
-        RET = 4'b1111;
+        //[modify] add JUMP instruction
+        JUMP    = 4'b1101,
+        RET     = 4'b1111;
 
     always @(posedge clk) begin 
         if (reset) begin 
@@ -68,10 +72,11 @@ module decoder (
             decoded_alu_arithmetic_mux <= 0;
             decoded_alu_output_mux <= 0;
             decoded_pc_mux <= 0;
+            decoded_jump <= 0;
             decoded_ret <= 0;
         end else begin 
             // Decode when core_state = DECODE
-            if (core_state == 3'b010) begin 
+            if (core_state == 4'b0010) begin 
                 // Get instruction signals from instruction every time
                 decoded_rd_address <= instruction[11:8];
                 decoded_rs_address <= instruction[7:4];
@@ -87,6 +92,7 @@ module decoder (
                 decoded_alu_arithmetic_mux <= 0;
                 decoded_alu_output_mux <= 0;
                 decoded_pc_mux <= 0;
+                decoded_jump <= 0;
                 decoded_ret <= 0;
                 decoded_sync <= 0;
                 decoded_ssy <= 0;
@@ -149,6 +155,10 @@ module decoder (
                     end
                     SYNC: begin 
                         decoded_sync <= 1;
+                    end
+                    //[modify] add JUMP instruction
+                    JUMP: begin 
+                        decoded_jump <= 1;
                     end
                     RET: begin 
                         decoded_ret <= 1;

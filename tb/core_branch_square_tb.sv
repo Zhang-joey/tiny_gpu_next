@@ -3,7 +3,7 @@
 
 // CORE TESTBENCH
 // > Tests the functionality of the core module
-module core_tb;
+module core_branch_square_tb;
     // Parameters
     parameter DATA_MEM_ADDR_BITS     = 8;
     parameter DATA_MEM_DATA_BITS     = 8;
@@ -40,10 +40,10 @@ module core_tb;
     reg [THREADS_PER_BLOCK-1:0] data_mem_write_ready;
     
     // Program Memory Model
-    reg [PROGRAM_MEM_DATA_BITS-1:0] program_memory [0:255];
+    reg [PROGRAM_MEM_DATA_BITS-1:0] program_memory [64:0];
     
     // Data Memory Model
-    reg [DATA_MEM_DATA_BITS-1:0] data_memory [0:255];
+    reg [DATA_MEM_DATA_BITS-1:0] data_memory [64:0];
     
     // Instantiate the core
     core #(
@@ -113,6 +113,35 @@ module core_tb;
         end
     endgenerate
     
+    //initial program_mem
+    initial begin
+        program_memory = {default: 'h0};
+        
+        program_memory[0] = {4'b0111, 4'd0, 4'd15, 4'd0};   //LDR R0, [R15]
+        program_memory[1] = {4'b1001, 4'd2, 8'd1};          //CONST R2, 1
+        program_memory[2] = {4'b1001, 4'd4, 8'd4};          //CONST R4, 4   
+        program_memory[3] = {4'b0011, 4'd4, 4'd4, 4'd15};   //ADD R4, R4, R15
+        program_memory[4] = {4'b0010, 4'd0, 4'd1, 4'd0};    //CMP R1, R0
+        program_memory[5] = {4'b1011, 4'b0010, 8'd9};       //SSYN <, 9
+        program_memory[6] = {4'b0011, 4'd3, 4'd3, 4'd0};    //ADD R3, R3, R0
+        program_memory[7] = {4'b0011, 4'd1, 4'd1, 4'd2};    //ADD R1, R1, R2
+        program_memory[8] = {4'b1101, 4'b0010, 8'd4};       //JUMP  4
+        program_memory[9] = {4'b1100, 4'd0, 4'd0, 4'd0};    //SYNC
+        program_memory[10] = {4'b1100, 4'd0, 4'd0, 4'd0};   //SYNC
+        program_memory[11]= {4'b1000, 4'd0, 4'd4, 4'd3};    //STR [R4] R3
+        program_memory[12] = {4'b1111, 4'd0, 4'd0, 4'd0};   //RET
+    end
+
+    // Initialize data memory
+    initial begin
+        data_memory = {default: 'h0};
+        
+        data_memory[0] = 1;
+        data_memory[1] = 2;
+        data_memory[2] = 3;
+        data_memory[3] = 4;
+    end
+
     // Test stimulus
     initial begin
         // Initialize
@@ -124,92 +153,6 @@ module core_tb;
         for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
             data_mem_read_ready[i] = 0;
             data_mem_write_ready[i] = 0;
-        end
-
-        //CONST R0 3
-        program_memory[0] = {4'b1001, 4'd0, 8'd3};
-
-        //CONST R1 5
-        //program_memory[1] = {4'b1001, 4'd1, 8'd5};
-
-        //CMP R15 R0
-        program_memory[1] = {4'b0010, 4'd0, 4'd15, 4'd0};
-        
-        //SSY < else to 13
-        program_memory[2] = 16'hb20d;
-        
-        //CONST R0 2
-        program_memory[3] = {4'b1001, 4'd0, 8'd2};
-        
-        //CONST R1 1
-        program_memory[4] = {4'b1001, 4'd1, 8'd1};
-        
-        ////CMP R15 R0
-        program_memory[5] = {4'b0010, 4'd0, 4'd15, 4'd0};
-        
-        //SSY < else to 9
-        program_memory[6] = 16'hb209;
-         
-        //CONST R1 2
-        program_memory[7] = {4'b1001, 4'd1, 8'd2};
-        
-        //SYNC
-        program_memory[8] = {4'b1100, 12'b0};
-        
-        //CONST R2 3
-        program_memory[9] = {4'b1001, 4'd2, 8'd3};
-        
-        //SYNC
-        program_memory[10] = {4'b1100, 12'b0};
-        
-        //CONST R1 4
-        program_memory[11] = {4'b1001, 4'd1, 8'd4};
-        
-        //SYNC
-        program_memory[12] = {4'b1100, 12'b0};
-        
-        //CONST R3 4
-        program_memory[13] = {4'b1001, 4'd3, 8'd4};
-        
-        //SYNC
-        program_memory[14] = {4'b1100, 12'b0};
-        
-        //CONST R4 5
-        program_memory[15] = {4'b1001, 4'd4, 8'd5};
-        
-        //BRnzp < to 15
-        //program_memory[3] = 16'h120f;
-        
-        //MOVC R0, R1 0010
-        //program_memory[4] = {4'b1010, 4'd0, 4'd1, 4'b0010};
-
-        //NOP
-        //program_memory[5] = 16'h0FFE;
-        
-        // LDR R0, [R14] - Load from memory address in R14 (blockDim) into R0
-        //program_memory[5] = 16'h700E;
-        
-        // ADD R0, R0, R15 - Add R0 and R15 (threadIdx) and store in R0
-        // program_memory[6] = 16'h300F;
-        
-        // STR R0, R14 - Store R14 to Mem[R0]
-        //program_memory[7] = 16'h800E;
-        
-        //CMP R0, R14 
-        //program_memory[8] = 16'h200E;
-        
-        //BRnzp lt 15 - if R0 < R14, PC = 15
-        //program_memory[9] = 16'h120f;
-        
-        //CONST R8 256
-        //program_memory[10] = 16'h98ff;
-        
-        // RET - Return
-        //program_memory[15] = 16'hF000;
-        
-        // Initialize data memory
-        for (int i = 0; i < 16; i++) begin
-            data_memory[i] = 3 * i + 3;
         end
 
         // Reset for 10 clock cycles
@@ -227,14 +170,17 @@ module core_tb;
         
         // Check results
         #10;
-        $display("\n Test completed. Results:");
-        $display("Data memory[%d] = %h", THREADS_PER_BLOCK, data_memory[THREADS_PER_BLOCK]);
+        // 显示结果数据
+        $display("\n=== 矩阵乘法结果 ===");
+        $display("C矩阵结果 (地址4-7):");
+        for(int i=0; i<4; i++) begin
+            $display("data_memory[%0d] = %0d", 4+i, data_memory[4+i]);
+        end
+        $display("==================\n");
+
+        $display("Test completed!");
+        $finish;
         
-        // Expected result: 0x42 + threadIdx for each thread
-//        for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
-//            $display("Thread %d: Expected = %h, Actual = %h", 
-//                    i, 8'h42 + i, data_memory[THREADS_PER_BLOCK]);
-//        end
         
         // End simulation
         #100;

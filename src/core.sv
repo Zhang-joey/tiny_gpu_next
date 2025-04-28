@@ -42,7 +42,7 @@ module core #(
 );
     //[modify] change reg to wire
     // State
-    wire [2:0]  core_state;
+    wire [3:0]  core_state;
     wire [2:0]  fetcher_state;
     wire [15:0] instruction;
 
@@ -74,7 +74,10 @@ module core #(
     wire [1:0]  decoded_alu_arithmetic_mux;        // Select arithmetic operation
     wire        decoded_alu_output_mux;             // Select operation in ALU
     wire        decoded_pc_mux;                     // Select source of next PC
+    //[modify] add decoded_jump
+    wire        decoded_jump;                       // instruction == JUMP
     wire        decoded_ret;
+    //[modify] add decoded_sync, decoded_ssy
     wire        decoded_sync;                       // instruction == SYNC
     wire        decoded_ssy;                        // instruction == SSY
 
@@ -117,6 +120,8 @@ module core #(
         .decoded_alu_arithmetic_mux (decoded_alu_arithmetic_mux ),
         .decoded_alu_output_mux     (decoded_alu_output_mux     ),
         .decoded_pc_mux             (decoded_pc_mux             ),
+        //[modify] add decoded_jump
+        .decoded_jump               (decoded_jump               ),
         .decoded_ret                (decoded_ret                )
     );
 
@@ -155,6 +160,8 @@ module core #(
         .decoded_ssy                (decoded_ssy            ),
         .decoded_sync               (decoded_sync           ),
         .decoded_pc_mux             (decoded_pc_mux         ),
+        //[modify] add decoded_jump
+        .decoded_jump               (decoded_jump           ),
         .nzp                        (nzp                    ),
         //[modify] add thread_mask output
         .thread_mask                (thread_mask            ),

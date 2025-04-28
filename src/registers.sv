@@ -17,7 +17,7 @@ module registers #(
     input reg [7:0] block_id,
 
     // State
-    input reg [2:0] core_state,
+    input reg [3:0] core_state,
 
     // Instruction Signals
     input reg [3:0] decoded_rd_address,
@@ -55,7 +55,7 @@ module registers #(
             nzp <= 3'b0;
         end
         else if (enable) begin
-            if (core_state == 3'b110 && decoded_nzp_write_enable) begin 
+            if (core_state == 4'b0111 && decoded_nzp_write_enable) begin 
                 // Write to NZP register on CMP instruction
                 // [warning] unconnected port alu_out[7-3]
                 nzp[2] <= alu_out[2];
@@ -93,14 +93,14 @@ module registers #(
             // [Bad Solution] Shouldn't need to set this every cycle
             registers[13] <= block_id; // Update the block_id when a new block is issued from dispatcher
             
-            // Fill rs/rt when core_state = REQUEST
-            if (core_state == 3'b011) begin 
+            // Fill rs/rt when core_state = ISSUE
+            if (core_state == 4'b0011) begin 
                 rs <= registers[decoded_rs_address];
                 rt <= registers[decoded_rt_address];
             end
 
             // Store rd when core_state = UPDATE
-            if (core_state == 3'b110) begin 
+            if (core_state == 4'b0111) begin 
                 // Only allow writing to R0 - R12
                 if (decoded_reg_write_enable && decoded_rd_address < 13) begin
                     case (decoded_reg_input_mux)

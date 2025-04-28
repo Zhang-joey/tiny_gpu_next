@@ -34,18 +34,20 @@ module scheduler #(
     // [modify] delete current_pc, next_pc
 
     // Execution State
-    output reg [2:0] core_state,
+    //[modify] change core_state to 4bit
+    output reg [3:0] core_state,
     output reg done
 );  
     reg any_lsu_waiting;
-    localparam  IDLE = 3'b000, // Waiting to start
-                FETCH = 3'b001,       // Fetch instructions from program memory
-                DECODE = 3'b010,      // Decode instructions into control signals
-                REQUEST = 3'b011,     // Request data from registers or memory
-                WAIT = 3'b100,        // Wait for response from memory if necessary
-                EXECUTE = 3'b101,     // Execute ALU and PC calculations
-                UPDATE = 3'b110,      // Update registers, NZP, and PC
-                DONE = 3'b111;        // Done executing this block
+    localparam  IDLE    = 4'b0000, // Waiting to start
+                FETCH   = 4'b0001,       // Fetch instructions from program memory
+                DECODE  = 4'b0010,      // Decode instructions into control signals
+                ISSUE   = 4'b0011,
+                REQUEST = 4'b0100,     // Request data from registers or memory
+                WAIT    = 4'b0101,        // Wait for response from memory if necessary
+                EXECUTE = 4'b0110,     // Execute ALU and PC calculations
+                UPDATE  = 4'b0111,      // Update registers, NZP, and PC
+                DONE    = 4'b1000;        // Done executing this block
     
     always @(posedge clk) begin 
         if (reset) begin
@@ -69,6 +71,10 @@ module scheduler #(
                 end
                 DECODE: begin
                     // Decode is synchronous so we move on after one cycle
+                    core_state <= ISSUE;
+                end
+                //[modify] add ISSUE state
+                ISSUE: begin
                     core_state <= REQUEST;
                 end
                 REQUEST: begin 

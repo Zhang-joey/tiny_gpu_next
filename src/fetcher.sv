@@ -12,7 +12,7 @@ module fetcher #(
     input wire reset,
     
     // Execution State
-    input reg [2:0] core_state,
+    input reg [3:0] core_state,
     input reg [7:0] current_pc,
 
     // Program Memory
@@ -39,7 +39,7 @@ module fetcher #(
             case (fetcher_state)
                 IDLE: begin
                     // Start fetching when core_state = FETCH
-                    if (core_state == 3'b001) begin
+                    if (core_state == 4'b0001) begin
                         fetcher_state   <= FETCHING;
                         mem_read_valid  <= 1;
                         mem_read_address<= current_pc;
@@ -55,7 +55,7 @@ module fetcher #(
                 end
                 FETCHED: begin
                     // Reset when core_state = DECODE
-                    if (core_state == 3'b010) begin 
+                    if (core_state == 4'b0010) begin 
                         fetcher_state <= IDLE;
                     end
                 end
