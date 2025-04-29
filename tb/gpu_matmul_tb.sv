@@ -5,7 +5,7 @@ module gpu_matmul_tb;
     // 参数定义
     localparam DATA_MEM_ADDR_BITS = 8;
     localparam DATA_MEM_DATA_BITS = 8;
-    localparam DATA_MEM_NUM_CHANNELS = 4;
+    localparam DATA_MEM_NUM_CHANNELS = 2;
     localparam PROGRAM_MEM_ADDR_BITS = 8;
     localparam PROGRAM_MEM_DATA_BITS = 16;
     localparam PROGRAM_MEM_NUM_CHANNELS = 1;

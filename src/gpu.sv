@@ -10,7 +10,7 @@
 module gpu #(
     parameter DATA_MEM_ADDR_BITS        = 8,        // Number of bits in data memory address (256 rows)
     parameter DATA_MEM_DATA_BITS        = 8,        // Number of bits in data memory value (8 bit data)
-    parameter DATA_MEM_NUM_CHANNELS     = 4,        // Number of concurrent channels for sending requests to data memory
+    parameter DATA_MEM_NUM_CHANNELS     = 2,        // Number of concurrent channels for sending requests to data memory
     parameter PROGRAM_MEM_ADDR_BITS     = 8,        // Number of bits in program memory address (256 rows)
     parameter PROGRAM_MEM_DATA_BITS     = 16,       // Number of bits in program memory value (16 bit instruction)
     parameter PROGRAM_MEM_NUM_CHANNELS  = 1,        // Number of concurrent channels for sending requests to program memory
@@ -57,16 +57,15 @@ module gpu #(
     reg  [7:0]                                      core_block_id [NUM_CORES-1:0];
     reg  [$clog2(THREADS_PER_BLOCK):0]              core_thread_count [NUM_CORES-1:0];
 
-    // LSU <> Data Memory Controller Channels
-    localparam NUM_LSUS = NUM_CORES * THREADS_PER_BLOCK;
-    reg  [NUM_LSUS-1:0]                           lsu_read_valid;
-    reg  [DATA_MEM_ADDR_BITS-1:0]                 lsu_read_address [NUM_LSUS-1:0];
-    reg  [NUM_LSUS-1:0]                           lsu_read_ready;
-    reg  [DATA_MEM_DATA_BITS-1:0]                 lsu_read_data [NUM_LSUS-1:0];
-    reg  [NUM_LSUS-1:0]                           lsu_write_valid;
-    reg  [DATA_MEM_ADDR_BITS-1:0]                 lsu_write_address [NUM_LSUS-1:0];
-    reg  [DATA_MEM_DATA_BITS-1:0]                 lsu_write_data [NUM_LSUS-1:0];
-    reg  [NUM_LSUS-1:0]                           lsu_write_ready;
+    // core <> Data Memory Controller Channels
+    reg  [NUM_CORES-1:0]                            core_read_valid;
+    reg  [DATA_MEM_ADDR_BITS-1:0]                   core_read_address [NUM_CORES-1:0];
+    reg  [NUM_CORES-1:0]                            core_read_ready;
+    reg  [DATA_MEM_DATA_BITS-1:0]                   core_read_data [NUM_CORES-1:0];
+    reg  [NUM_CORES-1:0]                            core_write_valid;
+    reg  [DATA_MEM_ADDR_BITS-1:0]                   core_write_address [NUM_CORES-1:0];
+    reg  [DATA_MEM_DATA_BITS-1:0]                   core_write_data [NUM_CORES-1:0];
+    reg  [NUM_CORES-1:0]                            core_write_ready;
 
     // Fetcher <> Program Memory Controller Channels
     localparam NUM_FETCHERS = NUM_CORES;
@@ -89,7 +88,7 @@ module gpu #(
     controller #(
         .ADDR_BITS                  (DATA_MEM_ADDR_BITS         ),
         .DATA_BITS                  (DATA_MEM_DATA_BITS         ),
-        .NUM_CONSUMERS              (NUM_LSUS                   ),
+        .NUM_CONSUMERS              (NUM_CORES                   ),
         .NUM_CHANNELS               (DATA_MEM_NUM_CHANNELS      ),
         .WRITE_ENABLE               (1                          ),
         .DATA_READ_NUM              (1                          )
@@ -97,14 +96,14 @@ module gpu #(
         .clk                    (clk                        ),
         .reset                  (reset                      ),
 
-        .consumer_read_valid    (lsu_read_valid             ),
-        .consumer_read_address  (lsu_read_address           ),
-        .consumer_read_ready    (lsu_read_ready             ),
-        .consumer_read_data     (lsu_read_data              ),
-        .consumer_write_valid   (lsu_write_valid            ),
-        .consumer_write_address (lsu_write_address          ),
-        .consumer_write_data    (lsu_write_data             ),
-        .consumer_write_ready   (lsu_write_ready            ),
+        .consumer_read_valid    (core_read_valid             ),
+        .consumer_read_address  (core_read_address           ),
+        .consumer_read_ready    (core_read_ready             ),
+        .consumer_read_data     (core_read_data              ),
+        .consumer_write_valid   (core_write_valid            ),
+        .consumer_write_address (core_write_address          ),
+        .consumer_write_data    (core_write_data             ),
+        .consumer_write_ready   (core_write_ready            ),
 
         .mem_read_valid         (data_mem_read_valid        ),
         .mem_read_address       (data_mem_read_address      ),
@@ -162,30 +161,26 @@ module gpu #(
         for (i = 0; i < NUM_CORES; i = i + 1) begin : cores
             // EDA: We create separate signals here to pass to cores because of a requirement
             // by the OpenLane EDA flow (uses Verilog 2005) that prevents slicing the top-level signals
-            reg [THREADS_PER_BLOCK-1:0]     core_lsu_read_valid;
-            reg [DATA_MEM_ADDR_BITS-1:0]    core_lsu_read_address   [THREADS_PER_BLOCK-1:0];
-            reg [THREADS_PER_BLOCK-1:0]     core_lsu_read_ready;
-            reg [DATA_MEM_DATA_BITS-1:0]    core_lsu_read_data      [THREADS_PER_BLOCK-1:0];
-            reg [THREADS_PER_BLOCK-1:0]     core_lsu_write_valid;
-            reg [DATA_MEM_ADDR_BITS-1:0]    core_lsu_write_address  [THREADS_PER_BLOCK-1:0];
-            reg [DATA_MEM_DATA_BITS-1:0]    core_lsu_write_data     [THREADS_PER_BLOCK-1:0];
-            reg [THREADS_PER_BLOCK-1:0]     core_lsu_write_ready;
+            reg                             single_core_read_valid;
+            reg [DATA_MEM_ADDR_BITS-1:0]    single_core_read_address;
+            reg                             single_core_read_ready;
+            reg [DATA_MEM_DATA_BITS-1:0]    single_core_read_data;
+            reg                             single_core_write_valid;
+            reg [DATA_MEM_ADDR_BITS-1:0]    single_core_write_address;
+            reg [DATA_MEM_DATA_BITS-1:0]    single_core_write_data;
+            reg                             single_core_write_ready;
 
-            // Pass through signals between LSUs and data memory controller
-            genvar j;
-            for (j = 0; j < THREADS_PER_BLOCK; j = j + 1) begin
-                localparam lsu_index = i * THREADS_PER_BLOCK + j;
-                // [modify] cancel the relay cycle
-                assign lsu_read_valid[lsu_index]     = core_lsu_read_valid[j];
-                assign lsu_read_address[lsu_index]   = core_lsu_read_address[j];
-                assign lsu_write_valid[lsu_index]    = core_lsu_write_valid[j];
-                assign lsu_write_address[lsu_index]  = core_lsu_write_address[j];
-                assign lsu_write_data[lsu_index]     = core_lsu_write_data[j];
-                
-                assign core_lsu_read_ready[j]        = lsu_read_ready[lsu_index];
-                assign core_lsu_read_data[j]         = lsu_read_data[lsu_index];
-                assign core_lsu_write_ready[j]       = lsu_write_ready[lsu_index];
-            end
+            // Pass through signals between core and data memory controller
+            // [modify] cancel the relay cycle
+            assign core_read_valid  [i]     = single_core_read_valid;
+            assign core_read_address[i]     = single_core_read_address;
+            assign core_write_valid [i]     = single_core_write_valid;
+            assign core_write_address[i]    = single_core_write_address;
+            assign core_write_data  [i]     = single_core_write_data;
+            
+            assign single_core_read_ready   = core_read_ready[i];
+            assign single_core_read_data    = core_read_data[i];
+            assign single_core_write_ready  = core_write_ready[i];
 
             // Compute Core
             core #(
@@ -197,7 +192,7 @@ module gpu #(
                 .CACHE_SIZE                 (CACHE_SIZE             ),
                 .LINE_SIZE                  (LINE_SIZE              )
             ) core_instance (
-                .clk(clk),
+                .clk                        (clk),
                 .reset                      (core_reset[i]          ),
                 .start                      (core_start[i]          ),
                 .done                       (core_done[i]           ),
@@ -209,14 +204,14 @@ module gpu #(
                 .program_mem_read_ready     (fetcher_read_ready[i]  ),
                 .program_mem_read_data      (fetcher_read_data[i]   ),
 
-                .data_mem_read_valid        (core_lsu_read_valid    ),
-                .data_mem_read_address      (core_lsu_read_address  ),
-                .data_mem_read_ready        (core_lsu_read_ready    ),
-                .data_mem_read_data         (core_lsu_read_data     ),
-                .data_mem_write_valid       (core_lsu_write_valid   ),
-                .data_mem_write_address     (core_lsu_write_address ),
-                .data_mem_write_data        (core_lsu_write_data    ),
-                .data_mem_write_ready       (core_lsu_write_ready   )
+                .data_mem_read_valid        (single_core_read_valid    ),
+                .data_mem_read_address      (single_core_read_address  ),
+                .data_mem_read_ready        (single_core_read_ready    ),
+                .data_mem_read_data         (single_core_read_data     ),
+                .data_mem_write_valid       (single_core_write_valid   ),
+                .data_mem_write_address     (single_core_write_address ),
+                .data_mem_write_data        (single_core_write_data    ),
+                .data_mem_write_ready       (single_core_write_ready   )
             );
         end
     endgenerate

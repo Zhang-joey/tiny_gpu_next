@@ -34,14 +34,14 @@ module core #(
     input  reg [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data,
 
     // Data Memory
-    output reg [THREADS_PER_BLOCK-1:0]     data_mem_read_valid,
-    output reg [DATA_MEM_ADDR_BITS-1:0]    data_mem_read_address   [THREADS_PER_BLOCK-1:0],
-    input  reg [THREADS_PER_BLOCK-1:0]     data_mem_read_ready,
-    input  reg [DATA_MEM_DATA_BITS-1:0]    data_mem_read_data      [THREADS_PER_BLOCK-1:0],
-    output reg [THREADS_PER_BLOCK-1:0]     data_mem_write_valid,
-    output reg [DATA_MEM_ADDR_BITS-1:0]    data_mem_write_address  [THREADS_PER_BLOCK-1:0],
-    output reg [DATA_MEM_DATA_BITS-1:0]    data_mem_write_data     [THREADS_PER_BLOCK-1:0],
-    input  reg [THREADS_PER_BLOCK-1:0]     data_mem_write_ready
+    output reg                              data_mem_read_valid,
+    output reg [DATA_MEM_ADDR_BITS-1:0]     data_mem_read_address,
+    input  reg                              data_mem_read_ready,
+    input  reg [DATA_MEM_DATA_BITS-1:0]     data_mem_read_data,
+    output reg                              data_mem_write_valid,
+    output reg [DATA_MEM_ADDR_BITS-1:0]     data_mem_write_address,
+    output reg [DATA_MEM_DATA_BITS-1:0]     data_mem_write_data,
+    input  reg                              data_mem_write_ready
 );
     //[modify] change reg to wire
     // State
@@ -50,7 +50,8 @@ module core #(
 
     // Intermediate Signals
     //[modify] add thread_mask
-    wire [THREADS_PER_BLOCK-1:0] thread_mask;
+    reg  [THREADS_PER_BLOCK-1:0] thread_mask;
+    wire [THREADS_PER_BLOCK-1:0] branch_thread_mask;
     wire [7:0]  current_pc   ;
     wire [7:0]  next_pc      ;
     wire [7:0]  rs       [THREADS_PER_BLOCK-1:0];
@@ -84,6 +85,47 @@ module core #(
     //[modify] add decoded_sync, decoded_ssy
     wire        decoded_sync;                       // instruction == SYNC
     wire        decoded_ssy;                        // instruction == SSY
+
+    // LSU访存请求信号
+    wire [THREADS_PER_BLOCK-1:0] lsu_read_valid;
+    wire [DATA_MEM_ADDR_BITS-1:0] lsu_read_address [THREADS_PER_BLOCK-1:0];
+    wire [THREADS_PER_BLOCK-1:0] lsu_read_ready;
+    wire [DATA_MEM_DATA_BITS-1:0] lsu_read_data [THREADS_PER_BLOCK-1:0];
+    wire [THREADS_PER_BLOCK-1:0] lsu_write_valid;
+    wire [DATA_MEM_ADDR_BITS-1:0] lsu_write_address [THREADS_PER_BLOCK-1:0];
+    wire [DATA_MEM_DATA_BITS-1:0] lsu_write_data [THREADS_PER_BLOCK-1:0];
+    wire [THREADS_PER_BLOCK-1:0] lsu_write_ready;
+
+    // Data Accessor实例
+    data_accessor #(
+        .THREADS_PER_BLOCK (THREADS_PER_BLOCK),
+        .DATA_MEM_ADDR_BITS (DATA_MEM_ADDR_BITS),
+        .DATA_MEM_DATA_BITS (DATA_MEM_DATA_BITS)
+    ) data_accessor_instance (
+        .clk (clk),
+        .reset (reset),
+
+        .thread_mask    (thread_mask),
+        // LSU接口
+        .lsu_read_valid     (lsu_read_valid             ),
+        .lsu_read_address   (lsu_read_address           ),
+        .lsu_read_ready     (lsu_read_ready             ),
+        .lsu_read_data      (lsu_read_data              ),
+        .lsu_write_valid    (lsu_write_valid            ),
+        .lsu_write_address  (lsu_write_address          ),
+        .lsu_write_data     (lsu_write_data             ),
+        .lsu_write_ready    (lsu_write_ready            ),
+
+        // 外部存储器接口
+        .mem_read_valid     (data_mem_read_valid        ),
+        .mem_read_address   (data_mem_read_address      ), // 只使用第一个地址，因为data_accessor已经处理了多线程
+        .mem_read_ready     (data_mem_read_ready        ),
+        .mem_read_data      (data_mem_read_data         ),
+        .mem_write_valid    (data_mem_write_valid       ),
+        .mem_write_address  (data_mem_write_address     ),
+        .mem_write_data     (data_mem_write_data        ),
+        .mem_write_ready    (data_mem_write_ready       )
+    );
 
     // Fetcher
     fetcher #(
@@ -171,10 +213,16 @@ module core #(
         .decoded_jump               (decoded_jump           ),
         .nzp                        (nzp                    ),
         //[modify] add thread_mask output
-        .thread_mask                (thread_mask            ),
+        .thread_mask                (branch_thread_mask     ),
         .current_pc                 (current_pc             ),
         .next_pc                    (next_pc                )
     );
+
+    always @ (*) begin
+        for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
+            thread_mask[i] = (i < thread_count) && branch_thread_mask[i];
+        end
+    end
 
     // Dedicated ALU, LSU, registers, & PC unit for each thread this core has capacity for
     genvar i;
@@ -185,7 +233,7 @@ module core #(
                 .clk                        (clk                            ),
                 .reset                      (reset                          ),
                 //[modify] change enable to be controlled by thread_mask
-                .enable                     ((i < thread_count) && thread_mask[i]),
+                .enable                     (thread_mask[i]                 ),
                 .core_state                 (core_state                     ),
                 .decoded_alu_arithmetic_mux (decoded_alu_arithmetic_mux     ),
                 .decoded_alu_output_mux     (decoded_alu_output_mux         ),
@@ -198,19 +246,18 @@ module core #(
             lsu lsu_instance (
                 .clk                        (clk                        ),
                 .reset                      (reset                      ),
-                //[modify] change enable to be controlled by thread_mask
-                .enable                     ((i < thread_count) && thread_mask[i]),
+                .enable                     (thread_mask[i]             ),
                 .core_state                 (core_state                 ),
                 .decoded_mem_read_enable    (decoded_mem_read_enable    ),
                 .decoded_mem_write_enable   (decoded_mem_write_enable   ),
-                .mem_read_valid             (data_mem_read_valid[i]     ),
-                .mem_read_address           (data_mem_read_address[i]   ),
-                .mem_read_ready             (data_mem_read_ready[i]     ),
-                .mem_read_data              (data_mem_read_data[i]      ),
-                .mem_write_valid            (data_mem_write_valid[i]    ),
-                .mem_write_address          (data_mem_write_address[i]  ),
-                .mem_write_data             (data_mem_write_data[i]     ),
-                .mem_write_ready            (data_mem_write_ready[i]    ),
+                .mem_read_valid             (lsu_read_valid[i]          ),
+                .mem_read_address           (lsu_read_address[i]        ),
+                .mem_read_ready             (lsu_read_ready[i]          ),
+                .mem_read_data              (lsu_read_data[i]           ),
+                .mem_write_valid            (lsu_write_valid[i]         ),
+                .mem_write_address          (lsu_write_address[i]       ),
+                .mem_write_data             (lsu_write_data[i]          ),
+                .mem_write_ready            (lsu_write_ready[i]         ),
                 .rs                         (rs[i]                      ),
                 .rt                         (rt[i]                      ),
                 .lsu_state                  (lsu_state[i]               ),
@@ -227,7 +274,7 @@ module core #(
                 .clk                        (clk                    ),
                 .reset                      (reset                  ),
                 //[modify] change enable to be controlled by thread_mask
-                .enable                     ((i < thread_count) && thread_mask[i]),
+                .enable                     (thread_mask[i]         ),
                 .block_id                   (block_id               ),
                 .core_state                 (core_state             ),
                 .decoded_reg_write_enable   (decoded_reg_write_enable),
