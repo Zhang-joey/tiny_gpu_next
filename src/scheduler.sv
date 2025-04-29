@@ -28,7 +28,9 @@ module scheduler #(
     input reg decoded_ret,
 
     // Memory Access State
-    input reg [2:0] fetcher_state,
+    //[modify] delete fetch_state
+    //[modify] add request_ready
+    input reg       request_ready,
     input reg [1:0] lsu_state [THREADS_PER_BLOCK-1:0],
 
     // [modify] delete current_pc, next_pc
@@ -65,7 +67,7 @@ module scheduler #(
                 end
                 FETCH: begin 
                     // Move on once fetcher_state = FETCHED
-                    if (fetcher_state == 3'b010) begin 
+                    if (request_ready == 1) begin 
                         core_state <= DECODE;
                     end
                 end

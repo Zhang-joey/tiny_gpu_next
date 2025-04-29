@@ -38,7 +38,7 @@ module registers #(
 
     // Registers
     //[modify] add nzp to registers output
-    output reg [3:0] nzp,
+    output reg [2:0] nzp,
     output reg [7:0] rs,
     output reg [7:0] rt
 );

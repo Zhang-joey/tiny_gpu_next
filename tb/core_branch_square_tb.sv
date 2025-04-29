@@ -10,6 +10,7 @@ module core_branch_square_tb;
     parameter PROGRAM_MEM_ADDR_BITS  = 8;
     parameter PROGRAM_MEM_DATA_BITS  = 16;
     parameter THREADS_PER_BLOCK      = 4;
+    parameter PROGRAM_MEM_DATA_READ_NUM = 4;
     
     // Clock and Reset
     reg clk;
@@ -27,7 +28,7 @@ module core_branch_square_tb;
     wire program_mem_read_valid;
     wire [PROGRAM_MEM_ADDR_BITS-1:0] program_mem_read_address;
     reg program_mem_read_ready;
-    reg [PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data;
+    reg [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data;
     
     // Data Memory
     wire [THREADS_PER_BLOCK-1:0] data_mem_read_valid;
@@ -83,7 +84,9 @@ module core_branch_square_tb;
     always @(posedge clk) begin
         if (program_mem_read_valid) begin
             program_mem_read_ready <= 1;
-            program_mem_read_data <= program_memory[program_mem_read_address];
+            for(int i=0; i<PROGRAM_MEM_DATA_READ_NUM; i++) begin
+                program_mem_read_data[i*PROGRAM_MEM_DATA_BITS +: PROGRAM_MEM_DATA_BITS] <= program_memory[program_mem_read_address + i];
+            end
         end else begin
             program_mem_read_ready <= 0;
         end
@@ -170,9 +173,9 @@ module core_branch_square_tb;
         
         // Check results
         #10;
-        // 显示结果数据
-        $display("\n=== 矩阵乘法结果 ===");
-        $display("C矩阵结果 (地址4-7):");
+        // ??????????
+        $display("\n=== output ===");
+        $display("mem addr: 4-7:");
         for(int i=0; i<4; i++) begin
             $display("data_memory[%0d] = %0d", 4+i, data_memory[4+i]);
         end

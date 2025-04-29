@@ -11,6 +11,9 @@ module gpu_matmul_tb;
     localparam PROGRAM_MEM_NUM_CHANNELS = 1;
     localparam NUM_CORES = 2;
     localparam THREADS_PER_BLOCK = 4;
+    localparam PROGRAM_MEM_DATA_READ_NUM = 4; //program的读取位宽(指令数,4条指令)
+    localparam CACHE_SIZE = 16;     // Instruction cache size in bytes
+    localparam LINE_SIZE = 4;        // Instruction cache line size in bytes
     
     // 时钟和复位信号
     reg clk;
@@ -28,7 +31,7 @@ module gpu_matmul_tb;
     wire [PROGRAM_MEM_NUM_CHANNELS-1:0] program_mem_read_valid;
     wire [PROGRAM_MEM_ADDR_BITS-1:0] program_mem_read_address [PROGRAM_MEM_NUM_CHANNELS-1:0];
     reg [PROGRAM_MEM_NUM_CHANNELS-1:0] program_mem_read_ready;
-    reg [PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data [PROGRAM_MEM_NUM_CHANNELS-1:0];
+    reg [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data [PROGRAM_MEM_NUM_CHANNELS-1:0];
     
     // 数据内存接口
     wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_valid;
@@ -55,7 +58,10 @@ module gpu_matmul_tb;
         .PROGRAM_MEM_DATA_BITS(PROGRAM_MEM_DATA_BITS),
         .PROGRAM_MEM_NUM_CHANNELS(PROGRAM_MEM_NUM_CHANNELS),
         .NUM_CORES(NUM_CORES),
-        .THREADS_PER_BLOCK(THREADS_PER_BLOCK)
+        .THREADS_PER_BLOCK(THREADS_PER_BLOCK),
+        .CACHE_SIZE(CACHE_SIZE),
+        .LINE_SIZE(LINE_SIZE),
+        .PROGRAM_MEM_DATA_READ_NUM(PROGRAM_MEM_DATA_READ_NUM)
     ) dut (
         .clk(clk),
         .reset(reset),
@@ -169,7 +175,9 @@ module gpu_matmul_tb;
                     if(program_mem_read_valid[0]) begin
                         repeat(5) @(posedge clk);  // 等待5个时钟周??
                         program_mem_read_ready[0] <= 1;
-                        program_mem_read_data[0] <= program_mem[program_mem_read_address[0]];
+                        for(int i=0; i<PROGRAM_MEM_DATA_READ_NUM; i++) begin
+                            program_mem_read_data[0][i*PROGRAM_MEM_DATA_BITS +: PROGRAM_MEM_DATA_BITS] <= program_mem[program_mem_read_address[0] + i];
+                        end
                         @(posedge clk);
                         program_mem_read_ready[0] <= 0;
                     end

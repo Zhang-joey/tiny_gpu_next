@@ -10,7 +10,10 @@ module core #(
     parameter DATA_MEM_DATA_BITS     = 8,
     parameter PROGRAM_MEM_ADDR_BITS  = 8,
     parameter PROGRAM_MEM_DATA_BITS  = 16,
-    parameter THREADS_PER_BLOCK      = 4
+    parameter THREADS_PER_BLOCK      = 4,
+    parameter CACHE_SIZE             = 16,
+    parameter LINE_SIZE              = 4,
+    parameter PROGRAM_MEM_DATA_READ_NUM = 4
 ) (
     // Clock and Reset
     input  wire clk,
@@ -28,7 +31,7 @@ module core #(
     output reg                             program_mem_read_valid,
     output reg [PROGRAM_MEM_ADDR_BITS-1:0] program_mem_read_address,
     input  reg                             program_mem_read_ready,
-    input  reg [PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data,
+    input  reg [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data,
 
     // Data Memory
     output reg [THREADS_PER_BLOCK-1:0]     data_mem_read_valid,
@@ -43,7 +46,6 @@ module core #(
     //[modify] change reg to wire
     // State
     wire [3:0]  core_state;
-    wire [2:0]  fetcher_state;
     wire [15:0] instruction;
 
     // Intermediate Signals
@@ -57,7 +59,9 @@ module core #(
     wire [7:0]  lsu_out  [THREADS_PER_BLOCK-1:0];
     wire [7:0]  alu_out  [THREADS_PER_BLOCK-1:0];
     wire [2:0]  nzp      [THREADS_PER_BLOCK-1:0];
-    
+    //[modify] add request_ready
+    wire        request_ready;
+
     // Decoded Instruction Signals
     wire [3:0]  decoded_rd_address;
     wire [3:0]  decoded_rs_address;
@@ -84,7 +88,10 @@ module core #(
     // Fetcher
     fetcher #(
         .PROGRAM_MEM_ADDR_BITS  (PROGRAM_MEM_ADDR_BITS),
-        .PROGRAM_MEM_DATA_BITS  (PROGRAM_MEM_DATA_BITS)
+        .PROGRAM_MEM_DATA_BITS  (PROGRAM_MEM_DATA_BITS),
+        .CACHE_SIZE             (CACHE_SIZE),
+        .LINE_SIZE              (LINE_SIZE),
+        .PROGRAM_MEM_DATA_READ_NUM (PROGRAM_MEM_DATA_READ_NUM)
     ) fetcher_instance (
         .clk                    (clk                    ),
         .reset                  (reset                  ),
@@ -94,7 +101,7 @@ module core #(
         .mem_read_address       (program_mem_read_address),
         .mem_read_ready         (program_mem_read_ready ),
         .mem_read_data          (program_mem_read_data  ),
-        .fetcher_state          (fetcher_state          ),
+        .request_ready          (request_ready          ),
         .instruction            (instruction            ) 
     );
 
@@ -132,7 +139,7 @@ module core #(
         .clk                        (clk                    ),
         .reset                      (reset                  ),
         .start                      (start                  ),
-        .fetcher_state              (fetcher_state          ),
+        .request_ready              (request_ready          ),
         .core_state                 (core_state             ),
         .decoded_mem_read_enable    (decoded_mem_read_enable),
         .decoded_mem_write_enable   (decoded_mem_write_enable),

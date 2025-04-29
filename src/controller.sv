@@ -10,7 +10,8 @@ module controller #(
     parameter DATA_BITS        = 16,
     parameter NUM_CONSUMERS    = 4, // The number of consumers accessing memory through this controller
     parameter NUM_CHANNELS     = 1, // The number of concurrent channels available to send requests to global memory
-    parameter WRITE_ENABLE     = 1  // Whether this memory controller can write to memory (program memory is read-only)
+    parameter WRITE_ENABLE     = 1,  // Whether this memory controller can write to memory (program memory is read-only)
+    parameter DATA_READ_NUM    = 1 //memory的读取位宽(指令数,program_mem为4条数据, data_mem为1条数据)
 ) (
     input wire clk,
     input wire reset,
@@ -19,7 +20,7 @@ module controller #(
     input  reg  [NUM_CONSUMERS-1:0]                 consumer_read_valid,
     input  reg  [ADDR_BITS-1:0]                     consumer_read_address   [NUM_CONSUMERS-1:0],
     output reg  [NUM_CONSUMERS-1:0]                 consumer_read_ready,
-    output reg  [DATA_BITS-1:0]                     consumer_read_data      [NUM_CONSUMERS-1:0],
+    output reg  [DATA_READ_NUM * DATA_BITS-1:0]     consumer_read_data      [NUM_CONSUMERS-1:0],
     input  reg  [NUM_CONSUMERS-1:0]                 consumer_write_valid,
     input  reg  [ADDR_BITS-1:0]                     consumer_write_address  [NUM_CONSUMERS-1:0],
     input  reg  [DATA_BITS-1:0]                     consumer_write_data     [NUM_CONSUMERS-1:0],
@@ -29,7 +30,7 @@ module controller #(
     output reg  [NUM_CHANNELS-1:0]                  mem_read_valid,
     output reg  [ADDR_BITS-1:0]                     mem_read_address    [NUM_CHANNELS-1:0],
     input  reg  [NUM_CHANNELS-1:0]                  mem_read_ready,
-    input  reg  [DATA_BITS-1:0]                     mem_read_data       [NUM_CHANNELS-1:0],
+    input  reg  [DATA_READ_NUM * DATA_BITS-1:0]     mem_read_data       [NUM_CHANNELS-1:0],
     output reg  [NUM_CHANNELS-1:0]                  mem_write_valid,
     output reg  [ADDR_BITS-1:0]                     mem_write_address   [NUM_CHANNELS-1:0],
     output reg  [DATA_BITS-1:0]                     mem_write_data      [NUM_CHANNELS-1:0],

@@ -13,9 +13,12 @@ module gpu #(
     parameter DATA_MEM_NUM_CHANNELS     = 4,        // Number of concurrent channels for sending requests to data memory
     parameter PROGRAM_MEM_ADDR_BITS     = 8,        // Number of bits in program memory address (256 rows)
     parameter PROGRAM_MEM_DATA_BITS     = 16,       // Number of bits in program memory value (16 bit instruction)
-    parameter PROGRAM_MEM_NUM_CHANNELS  = 1,      // Number of concurrent channels for sending requests to program memory
+    parameter PROGRAM_MEM_NUM_CHANNELS  = 1,        // Number of concurrent channels for sending requests to program memory
     parameter NUM_CORES                 = 2,        // Number of cores to include in this GPU
-    parameter THREADS_PER_BLOCK         = 4         // Number of threads to handle per block (determines the compute resources of each core)
+    parameter THREADS_PER_BLOCK         = 4,        // Number of threads to handle per block (determines the compute resources of each core)
+    parameter CACHE_SIZE                = 16,     // Instruction cache size in bytes
+    parameter LINE_SIZE                 = 4,        // Instruction cache line size in bytes
+    parameter PROGRAM_MEM_DATA_READ_NUM = 4        // Number of instructions to read from program memory per cycle
 ) (
     input  wire                                     clk,
     input  wire                                     reset,
@@ -32,7 +35,7 @@ module gpu #(
     output wire [PROGRAM_MEM_NUM_CHANNELS-1:0]      program_mem_read_valid,
     output wire [PROGRAM_MEM_ADDR_BITS-1:0]         program_mem_read_address [PROGRAM_MEM_NUM_CHANNELS-1:0],
     input  wire [PROGRAM_MEM_NUM_CHANNELS-1:0]      program_mem_read_ready,
-    input  wire [PROGRAM_MEM_DATA_BITS-1:0]         program_mem_read_data [PROGRAM_MEM_NUM_CHANNELS-1:0],
+    input  wire [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0]         program_mem_read_data [PROGRAM_MEM_NUM_CHANNELS-1:0],
 
     // Data Memory  
     output wire [DATA_MEM_NUM_CHANNELS-1:0]         data_mem_read_valid,
@@ -70,7 +73,7 @@ module gpu #(
     reg  [NUM_FETCHERS-1:0]                       fetcher_read_valid;
     reg  [PROGRAM_MEM_ADDR_BITS-1:0]              fetcher_read_address [NUM_FETCHERS-1:0];
     reg  [NUM_FETCHERS-1:0]                       fetcher_read_ready;
-    reg  [PROGRAM_MEM_DATA_BITS-1:0]              fetcher_read_data [NUM_FETCHERS-1:0];
+    reg  [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0]              fetcher_read_data [NUM_FETCHERS-1:0];
     
     // Device Control Register
     dcr dcr_instance (
@@ -87,7 +90,9 @@ module gpu #(
         .ADDR_BITS                  (DATA_MEM_ADDR_BITS         ),
         .DATA_BITS                  (DATA_MEM_DATA_BITS         ),
         .NUM_CONSUMERS              (NUM_LSUS                   ),
-        .NUM_CHANNELS               (DATA_MEM_NUM_CHANNELS      )
+        .NUM_CHANNELS               (DATA_MEM_NUM_CHANNELS      ),
+        .WRITE_ENABLE               (1                          ),
+        .DATA_READ_NUM              (1                          )
     ) data_memory_controller (
         .clk                    (clk                        ),
         .reset                  (reset                      ),
@@ -117,7 +122,8 @@ module gpu #(
         .DATA_BITS              (PROGRAM_MEM_DATA_BITS      ),
         .NUM_CONSUMERS          (NUM_FETCHERS               ),
         .NUM_CHANNELS           (PROGRAM_MEM_NUM_CHANNELS   ),
-        .WRITE_ENABLE           (0                          )
+        .WRITE_ENABLE           (0                          ),
+        .DATA_READ_NUM          (PROGRAM_MEM_DATA_READ_NUM  )
     ) program_memory_controller (
         .clk                    (clk                        ),
         .reset                  (reset                      ),
@@ -187,7 +193,9 @@ module gpu #(
                 .DATA_MEM_DATA_BITS         (DATA_MEM_DATA_BITS     ),
                 .PROGRAM_MEM_ADDR_BITS      (PROGRAM_MEM_ADDR_BITS  ),
                 .PROGRAM_MEM_DATA_BITS      (PROGRAM_MEM_DATA_BITS  ),
-                .THREADS_PER_BLOCK          (THREADS_PER_BLOCK      )
+                .THREADS_PER_BLOCK          (THREADS_PER_BLOCK      ),
+                .CACHE_SIZE                 (CACHE_SIZE             ),
+                .LINE_SIZE                  (LINE_SIZE              )
             ) core_instance (
                 .clk(clk),
                 .reset                      (core_reset[i]          ),
