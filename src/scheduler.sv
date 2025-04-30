@@ -21,9 +21,7 @@ module scheduler #(
     input wire start,
     
     // Control Signals
-    // [warning] unused
-    input reg decoded_mem_read_enable,
-    input reg decoded_mem_write_enable,
+    // [modify] delete unused decoded_mem_read_enable, decoded_mem_write_enable
 
     input reg decoded_ret,
 

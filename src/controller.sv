@@ -11,7 +11,7 @@ module controller #(
     parameter NUM_CONSUMERS    = 4, // The number of consumers accessing memory through this controller
     parameter NUM_CHANNELS     = 1, // The number of concurrent channels available to send requests to global memory
     parameter WRITE_ENABLE     = 1,  // Whether this memory controller can write to memory (program memory is read-only)
-    parameter DATA_READ_NUM    = 1 //memory的读取位宽(指令数,program_mem为4条数据, data_mem为1条数据)
+    parameter DATA_READ_NUM    = 1 //memory的读取位�?(指令�?,program_mem�?4条数�?, data_mem�?1条数�?)
 ) (
     input wire clk,
     input wire reset,

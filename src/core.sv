@@ -122,9 +122,9 @@ module core #(
         .lsu_write_data     (lsu_write_data             ),
         .lsu_write_ready    (lsu_write_ready            ),
 
-        // 外部存储器接口
+        // 外部存储器接�?
         .mem_read_valid     (data_mem_read_valid        ),
-        .mem_read_address   (data_mem_read_address      ), // 只使用第一个地址，因为data_accessor已经处理了多线程
+        .mem_read_address   (data_mem_read_address      ), // 只使用第�?个地�?，因为data_accessor已经处理了多线程
         .mem_read_ready     (data_mem_read_ready        ),
         .mem_read_data      (data_mem_read_data         ),
         .mem_write_valid    (data_mem_write_valid       ),
@@ -189,8 +189,6 @@ module core #(
         .start                      (start                  ),
         .request_ready              (request_ready          ),
         .core_state                 (core_state             ),
-        .decoded_mem_read_enable    (decoded_mem_read_enable),
-        .decoded_mem_write_enable   (decoded_mem_write_enable),
         .decoded_ret                (decoded_ret            ),
         .lsu_state                  (lsu_state              ),
         //[modify] delete current_pc, next_pc

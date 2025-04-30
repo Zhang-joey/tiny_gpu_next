@@ -105,13 +105,11 @@ module pc #(
             ) SIMT_stack_inst (
                 .clk                    (clk                    ),
                 .reset                  (reset                  ),
-                .current_pc             (current_pc             ),
                 .decoded_sync           (decoded_sync           ),
                 .decoded_ssy            (decoded_ssy            ),
                 .decoded_nzp            (decoded_nzp            ),
                 .decoded_immediate      (decoded_immediate      ),
                 .core_state             (core_state             ),
-                .nzp                    (nzp                    ),
                 .enable                 (SIMT_stack_enable[i]   ),
                 .current_mask           (current_mask           ),
                 .origin_mask            (origin_mask            ),

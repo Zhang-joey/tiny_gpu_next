@@ -1,16 +1,16 @@
+`timescale 1ns/1ns
+
 module SIMT_stack #(
     parameter PROGRAM_MEM_ADDR_BITS = 8,
     parameter THREADS_PER_BLOCK = 4
 ) (
     input wire clk,
     input wire reset,
-    input wire [PROGRAM_MEM_ADDR_BITS-1:0] current_pc,
     input wire decoded_sync,
     input wire decoded_ssy,
     input wire [2:0] decoded_nzp,
     input wire [PROGRAM_MEM_ADDR_BITS-1:0] decoded_immediate,
     input wire [3:0] core_state,
-    input wire [2:0] nzp [THREADS_PER_BLOCK-1:0],
     input wire enable,
     input wire [THREADS_PER_BLOCK-1:0] current_mask,
     input wire [THREADS_PER_BLOCK-1:0] origin_mask,

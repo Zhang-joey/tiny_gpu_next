@@ -115,6 +115,11 @@ module core_branch_square_tb;
     end
     
     //initial program_mem
+    // data = [1, 2, 3, 4]
+    // for (i = 0; i < data; i++) {
+    //     out += data;
+    // }
+    // out = [1, 4, 9, 16]
     initial begin
         program_memory = {default: 'h0};
         

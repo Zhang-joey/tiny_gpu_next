@@ -5,6 +5,8 @@
 - [x] ssy and sync inst
 - [x] SIMT stack
 - [x] memory coalescing
+- [x] i_cache
+- [x] d_cache
 - [ ] cancel or optimize state machine(delete WAITING state)
    - [x] fetcher  
    - [ ] lsu(scheduler WAIT state jump cond)
