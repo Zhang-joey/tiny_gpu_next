@@ -12,8 +12,11 @@ module gpu_matmul_tb;
     localparam NUM_CORES = 2;
     localparam THREADS_PER_BLOCK = 4;
     localparam PROGRAM_MEM_DATA_READ_NUM = 4; //program的读取位宽(指令数,4条指令)
-    localparam CACHE_SIZE = 16;     // Instruction cache size in bytes
-    localparam LINE_SIZE = 4;        // Instruction cache line size in bytes
+    localparam DATA_MEM_DATA_READ_NUM = 4; //data的读取位宽(数据数,4个数据)
+    localparam PROGRAM_CACHE_SIZE = 16;     // Instruction cache size in bytes
+    localparam PROGRAM_CACHE_LINE_SIZE = 4;        // Instruction cache line size in bytes
+    localparam DATA_CACHE_SIZE = 32;     // Instruction cache size in bytes
+    localparam DATA_CACHE_LINE_SIZE = 4;        // Instruction cache line size in bytes
     
     // 时钟和复位信号
     reg clk;
@@ -37,7 +40,7 @@ module gpu_matmul_tb;
     wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_valid;
     wire [DATA_MEM_ADDR_BITS-1:0] data_mem_read_address [DATA_MEM_NUM_CHANNELS-1:0];
     reg [DATA_MEM_NUM_CHANNELS-1:0] data_mem_read_ready;
-    reg [DATA_MEM_DATA_BITS-1:0] data_mem_read_data [DATA_MEM_NUM_CHANNELS-1:0];
+    reg [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0] data_mem_read_data [DATA_MEM_NUM_CHANNELS-1:0];
     wire [DATA_MEM_NUM_CHANNELS-1:0] data_mem_write_valid;
     wire [DATA_MEM_ADDR_BITS-1:0] data_mem_write_address [DATA_MEM_NUM_CHANNELS-1:0];
     wire [DATA_MEM_DATA_BITS-1:0] data_mem_write_data [DATA_MEM_NUM_CHANNELS-1:0];
@@ -59,9 +62,12 @@ module gpu_matmul_tb;
         .PROGRAM_MEM_NUM_CHANNELS(PROGRAM_MEM_NUM_CHANNELS),
         .NUM_CORES(NUM_CORES),
         .THREADS_PER_BLOCK(THREADS_PER_BLOCK),
-        .CACHE_SIZE(CACHE_SIZE),
-        .LINE_SIZE(LINE_SIZE),
-        .PROGRAM_MEM_DATA_READ_NUM(PROGRAM_MEM_DATA_READ_NUM)
+        .PROGRAM_CACHE_SIZE(PROGRAM_CACHE_SIZE),
+        .PROGRAM_CACHE_LINE_SIZE(PROGRAM_CACHE_LINE_SIZE),
+        .DATA_CACHE_SIZE(DATA_CACHE_SIZE),
+        .DATA_CACHE_LINE_SIZE(DATA_CACHE_LINE_SIZE),
+        .PROGRAM_MEM_DATA_READ_NUM(PROGRAM_MEM_DATA_READ_NUM),
+        .DATA_MEM_DATA_READ_NUM(DATA_MEM_DATA_READ_NUM)
     ) dut (
         .clk(clk),
         .reset(reset),
@@ -187,7 +193,7 @@ module gpu_matmul_tb;
                 end
             end
             
-            // 数据内存读响??
+            // 数据内存读响应
             begin
                 forever begin
                     @(posedge clk);
@@ -196,7 +202,9 @@ module gpu_matmul_tb;
                             data_mem_read_ready[i] <= 0;  // 先拉低ready信号
                             repeat(5) @(posedge clk);  // 等待5个时钟周??
                             data_mem_read_ready[i] <= 1;
-                            data_mem_read_data[i] <= data_mem[data_mem_read_address[i]];
+                            for(int j=0; j<DATA_MEM_DATA_READ_NUM; j++) begin
+                                data_mem_read_data[i][j*DATA_MEM_DATA_BITS +: DATA_MEM_DATA_BITS] <= data_mem[data_mem_read_address[i] + j];
+                            end
                             @(posedge clk);
                             data_mem_read_ready[i] <= 0;
                         end
@@ -204,7 +212,7 @@ module gpu_matmul_tb;
                 end
             end
             
-            // 数据内存写响??
+            // 数据内存写响应
             begin
                 forever begin
                     @(posedge clk);

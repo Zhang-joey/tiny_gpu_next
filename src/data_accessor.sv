@@ -7,7 +7,10 @@
 module data_accessor #(
     parameter THREADS_PER_BLOCK = 4,
     parameter DATA_MEM_ADDR_BITS = 8,
-    parameter DATA_MEM_DATA_BITS = 8
+    parameter DATA_MEM_DATA_BITS = 8,
+    parameter DATA_MEM_DATA_READ_NUM = 4,
+    parameter CACHE_SIZE = 32,        // 新增：缓存总大小
+    parameter CACHE_LINE_SIZE = 4     // 新增：缓存行大小
 ) (
     input wire clk,
     input wire reset,
@@ -29,7 +32,7 @@ module data_accessor #(
     output reg                            mem_read_valid,
     output reg [DATA_MEM_ADDR_BITS-1:0]   mem_read_address,
     input wire                            mem_read_ready,
-    input wire [DATA_MEM_DATA_BITS-1:0]   mem_read_data,
+    input wire [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0]   mem_read_data,
     output reg                            mem_write_valid,
     output reg [DATA_MEM_ADDR_BITS-1:0]   mem_write_address,
     output reg [DATA_MEM_DATA_BITS-1:0]   mem_write_data,
@@ -49,6 +52,32 @@ module data_accessor #(
     reg [THREADS_PER_BLOCK-1:0] completed_read_threads;
     reg [THREADS_PER_BLOCK-1:0] completed_write_threads;
     reg [$clog2(THREADS_PER_BLOCK)-1:0] current_thread;
+
+    // 新增：数据缓存接口信号
+    reg request_valid;
+    reg [DATA_MEM_ADDR_BITS-1:0] request_address;
+    wire request_ready;
+    wire [DATA_MEM_DATA_BITS-1:0] request_data;
+
+    // 新增：数据缓存实例化
+    cache #(
+        .CACHE_SIZE(CACHE_SIZE),
+        .LINE_SIZE(CACHE_LINE_SIZE),
+        .MEM_ADDR_BITS(DATA_MEM_ADDR_BITS),
+        .MEM_DATA_BITS(DATA_MEM_DATA_BITS),
+        .MEM_DATA_READ_NUM(DATA_MEM_DATA_READ_NUM)
+    ) dcache (
+        .clk(clk),
+        .reset(reset),
+        .addr(request_address),
+        .request_valid(request_valid),
+        .request_ready(request_ready),
+        .instruction(request_data),
+        .mem_read_valid(mem_read_valid),
+        .mem_read_address(mem_read_address),
+        .mem_read_ready(mem_read_ready),
+        .mem_read_data(mem_read_data)
+    );
 
     // 检查是否有相同地址的请求
     function automatic [THREADS_PER_BLOCK-1:0] find_same_address;
@@ -88,8 +117,8 @@ module data_accessor #(
             pending_write_threads <= 0;
             completed_read_threads <= 0;
             completed_write_threads <= 0;
-            mem_read_valid <= 0;
-            mem_write_valid <= 0;
+            request_valid <= 0;
+            request_address <= 0;
             lsu_read_ready <= 0;
             lsu_write_ready <= 0;
         end else begin
@@ -101,8 +130,8 @@ module data_accessor #(
                         // 找到所有相同地址的读请求
                         pending_read_threads <= find_same_address(lsu_read_valid, lsu_read_address, lsu_read_address[current_thread]);
                         completed_read_threads <= 0;
-                        mem_read_valid <= 1;
-                        mem_read_address <= lsu_read_address[current_thread];
+                        request_valid <= 1;
+                        request_address <= lsu_read_address[current_thread];
                     end
                     // 检查是否有新的写请求
                     else if (|lsu_write_valid) begin
@@ -117,12 +146,12 @@ module data_accessor #(
                 end
 
                 READ_WAITING: begin
-                    if (mem_read_ready) begin
-                        mem_read_valid <= 0;
+                    if (request_ready) begin
+                        request_valid <= 0;
                         // 将数据返回给所有等待相同地址的线程
                         for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
                             if (pending_read_threads[i] && !completed_read_threads[i]) begin
-                                lsu_read_data[i] <= mem_read_data;
+                                lsu_read_data[i] <= request_data;
                                 lsu_read_ready[i] <= 1;
                                 completed_read_threads[i] <= 1;
                             end 
@@ -158,8 +187,8 @@ module data_accessor #(
                     end
                     else begin      // 更新轮询指针到下一个请求
                         pending_read_threads <= find_same_address(lsu_read_valid, lsu_read_address, lsu_read_address[current_thread]);
-                        mem_read_valid <= 1;
-                        mem_read_address <= lsu_read_address[current_thread];
+                        request_valid <= 1;
+                        request_address <= lsu_read_address[current_thread];
                         state <= READ_WAITING;
                     end
                 end

@@ -11,6 +11,7 @@ module core_branch_square_tb;
     parameter PROGRAM_MEM_DATA_BITS  = 16;
     parameter THREADS_PER_BLOCK      = 4;
     parameter PROGRAM_MEM_DATA_READ_NUM = 4;
+    parameter DATA_MEM_DATA_READ_NUM = 4;
     
     // Clock and Reset
     reg clk;
@@ -31,14 +32,14 @@ module core_branch_square_tb;
     reg [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data;
     
     // Data Memory
-    wire [THREADS_PER_BLOCK-1:0] data_mem_read_valid;
-    wire [DATA_MEM_ADDR_BITS-1:0] data_mem_read_address [THREADS_PER_BLOCK-1:0];
-    reg [THREADS_PER_BLOCK-1:0] data_mem_read_ready;
-    reg [DATA_MEM_DATA_BITS-1:0] data_mem_read_data [THREADS_PER_BLOCK-1:0];
-    wire [THREADS_PER_BLOCK-1:0] data_mem_write_valid;
-    wire [DATA_MEM_ADDR_BITS-1:0] data_mem_write_address [THREADS_PER_BLOCK-1:0];
-    wire [DATA_MEM_DATA_BITS-1:0] data_mem_write_data [THREADS_PER_BLOCK-1:0];
-    reg [THREADS_PER_BLOCK-1:0] data_mem_write_ready;
+    wire                            data_mem_read_valid;
+    wire [DATA_MEM_ADDR_BITS-1:0]   data_mem_read_address;
+    reg                             data_mem_read_ready;
+    reg [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0] data_mem_read_data;
+    wire                            data_mem_write_valid;
+    wire [DATA_MEM_ADDR_BITS-1:0]   data_mem_write_address;
+    wire [DATA_MEM_DATA_BITS-1:0]   data_mem_write_data;
+    reg                             data_mem_write_ready;
     
     // Program Memory Model
     reg [PROGRAM_MEM_DATA_BITS-1:0] program_memory [64:0];
@@ -93,28 +94,25 @@ module core_branch_square_tb;
     end
     
     // Data Memory Model
-    genvar i;
-    generate
-        for (i = 0; i < THREADS_PER_BLOCK; i = i + 1) begin : data_mem_model
-            always @(posedge clk) begin
-                // Read operation
-                if (data_mem_read_valid[i]) begin
-                    data_mem_read_ready[i] <= 1;
-                    data_mem_read_data[i] <= data_memory[data_mem_read_address[i]];
-                end else begin
-                    data_mem_read_ready[i] <= 0;
-                end
-                
-                // Write operation
-                if (data_mem_write_valid[i]) begin
-                    data_mem_write_ready[i] <= 1;
-                    data_memory[data_mem_write_address[i]] <= data_mem_write_data[i];
-                end else begin
-                    data_mem_write_ready[i] <= 0;
-                end
+    always @(posedge clk) begin
+        // Read operation
+        if (data_mem_read_valid) begin
+            data_mem_read_ready <= 1;
+            for(int j=0; j<DATA_MEM_DATA_READ_NUM; j++) begin
+                data_mem_read_data[j*DATA_MEM_DATA_BITS +: DATA_MEM_DATA_BITS] <= data_memory[data_mem_read_address + j];
             end
+        end else begin
+            data_mem_read_ready <= 0;
         end
-    endgenerate
+        
+        // Write operation
+        if (data_mem_write_valid) begin
+            data_mem_write_ready <= 1;
+            data_memory[data_mem_write_address] <= data_mem_write_data;
+        end else begin
+            data_mem_write_ready <= 0;
+        end
+    end
     
     //initial program_mem
     initial begin
@@ -153,10 +151,8 @@ module core_branch_square_tb;
         block_id = 0;
         thread_count = 4;
         program_mem_read_ready = 0;
-        for (int i = 0; i < THREADS_PER_BLOCK; i++) begin
-            data_mem_read_ready[i] = 0;
-            data_mem_write_ready[i] = 0;
-        end
+        data_mem_read_ready = 0;
+        data_mem_write_ready = 0;
 
         // Reset for 10 clock cycles
         #50;
@@ -173,7 +169,6 @@ module core_branch_square_tb;
         
         // Check results
         #10;
-        // ??????????
         $display("\n=== output ===");
         $display("mem addr: 4-7:");
         for(int i=0; i<4; i++) begin

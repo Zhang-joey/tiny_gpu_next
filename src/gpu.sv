@@ -16,9 +16,12 @@ module gpu #(
     parameter PROGRAM_MEM_NUM_CHANNELS  = 1,        // Number of concurrent channels for sending requests to program memory
     parameter NUM_CORES                 = 2,        // Number of cores to include in this GPU
     parameter THREADS_PER_BLOCK         = 4,        // Number of threads to handle per block (determines the compute resources of each core)
-    parameter CACHE_SIZE                = 16,     // Instruction cache size in bytes
-    parameter LINE_SIZE                 = 4,        // Instruction cache line size in bytes
-    parameter PROGRAM_MEM_DATA_READ_NUM = 4        // Number of instructions to read from program memory per cycle
+    parameter PROGRAM_CACHE_SIZE        = 16,     // Instruction cache size in bytes
+    parameter PROGRAM_CACHE_LINE_SIZE  = 4,        // Instruction cache line size in bytes
+    parameter DATA_CACHE_SIZE           = 32,     // Instruction cache size in bytes
+    parameter DATA_CACHE_LINE_SIZE      = 4,        // Instruction cache line size in bytes
+    parameter PROGRAM_MEM_DATA_READ_NUM = 4,        // Number of instructions to read from program memory per cycle
+    parameter DATA_MEM_DATA_READ_NUM    = 4         // Number of data to read from data memory per cycle
 ) (
     input  wire                                     clk,
     input  wire                                     reset,
@@ -41,7 +44,7 @@ module gpu #(
     output wire [DATA_MEM_NUM_CHANNELS-1:0]         data_mem_read_valid,
     output wire [DATA_MEM_ADDR_BITS-1:0]            data_mem_read_address [DATA_MEM_NUM_CHANNELS-1:0],
     input  wire [DATA_MEM_NUM_CHANNELS-1:0]         data_mem_read_ready,
-    input  wire [DATA_MEM_DATA_BITS-1:0]            data_mem_read_data [DATA_MEM_NUM_CHANNELS-1:0],
+    input  wire [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0]            data_mem_read_data [DATA_MEM_NUM_CHANNELS-1:0],
     output wire [DATA_MEM_NUM_CHANNELS-1:0]         data_mem_write_valid,
     output wire [DATA_MEM_ADDR_BITS-1:0]            data_mem_write_address [DATA_MEM_NUM_CHANNELS-1:0],
     output wire [DATA_MEM_DATA_BITS-1:0]            data_mem_write_data [DATA_MEM_NUM_CHANNELS-1:0],
@@ -61,7 +64,7 @@ module gpu #(
     reg  [NUM_CORES-1:0]                            core_read_valid;
     reg  [DATA_MEM_ADDR_BITS-1:0]                   core_read_address [NUM_CORES-1:0];
     reg  [NUM_CORES-1:0]                            core_read_ready;
-    reg  [DATA_MEM_DATA_BITS-1:0]                   core_read_data [NUM_CORES-1:0];
+    reg  [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0]                   core_read_data [NUM_CORES-1:0];
     reg  [NUM_CORES-1:0]                            core_write_valid;
     reg  [DATA_MEM_ADDR_BITS-1:0]                   core_write_address [NUM_CORES-1:0];
     reg  [DATA_MEM_DATA_BITS-1:0]                   core_write_data [NUM_CORES-1:0];
@@ -90,10 +93,10 @@ module gpu #(
     controller #(
         .ADDR_BITS                  (DATA_MEM_ADDR_BITS         ),
         .DATA_BITS                  (DATA_MEM_DATA_BITS         ),
-        .NUM_CONSUMERS              (NUM_CORES                   ),
+        .NUM_CONSUMERS              (NUM_CORES                  ),
         .NUM_CHANNELS               (DATA_MEM_NUM_CHANNELS      ),
         .WRITE_ENABLE               (1                          ),
-        .DATA_READ_NUM              (1                          )
+        .DATA_READ_NUM              (DATA_MEM_DATA_READ_NUM     )
     ) data_memory_controller (
         .clk                    (clk                        ),
         .reset                  (reset                      ),
@@ -166,7 +169,7 @@ module gpu #(
             reg                             single_core_read_valid;
             reg [DATA_MEM_ADDR_BITS-1:0]    single_core_read_address;
             reg                             single_core_read_ready;
-            reg [DATA_MEM_DATA_BITS-1:0]    single_core_read_data;
+            reg [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0]    single_core_read_data;
             reg                             single_core_write_valid;
             reg [DATA_MEM_ADDR_BITS-1:0]    single_core_write_address;
             reg [DATA_MEM_DATA_BITS-1:0]    single_core_write_data;
@@ -191,8 +194,12 @@ module gpu #(
                 .PROGRAM_MEM_ADDR_BITS      (PROGRAM_MEM_ADDR_BITS  ),
                 .PROGRAM_MEM_DATA_BITS      (PROGRAM_MEM_DATA_BITS  ),
                 .THREADS_PER_BLOCK          (THREADS_PER_BLOCK      ),
-                .CACHE_SIZE                 (CACHE_SIZE             ),
-                .LINE_SIZE                  (LINE_SIZE              )
+                .PROGRAM_CACHE_SIZE         (PROGRAM_CACHE_SIZE     ),
+                .PROGRAM_CACHE_LINE_SIZE    (PROGRAM_CACHE_LINE_SIZE),
+                .DATA_CACHE_SIZE            (DATA_CACHE_SIZE        ),
+                .DATA_CACHE_LINE_SIZE       (DATA_CACHE_LINE_SIZE   ),
+                .PROGRAM_MEM_DATA_READ_NUM  (PROGRAM_MEM_DATA_READ_NUM),
+                .DATA_MEM_DATA_READ_NUM     (DATA_MEM_DATA_READ_NUM  )
             ) core_instance (
                 .clk                        (clk),
                 .reset                      (core_reset[i]          ),

@@ -6,14 +6,17 @@
 // > The core also has it's own scheduler to manage control flow
 // > Each core contains 1 fetcher & decoder, and register files, ALUs, LSUs, PC for each thread
 module core #(
-    parameter DATA_MEM_ADDR_BITS     = 8,
-    parameter DATA_MEM_DATA_BITS     = 8,
-    parameter PROGRAM_MEM_ADDR_BITS  = 8,
-    parameter PROGRAM_MEM_DATA_BITS  = 16,
-    parameter THREADS_PER_BLOCK      = 4,
-    parameter CACHE_SIZE             = 16,
-    parameter LINE_SIZE              = 4,
-    parameter PROGRAM_MEM_DATA_READ_NUM = 4
+    parameter DATA_MEM_ADDR_BITS        = 8,
+    parameter DATA_MEM_DATA_BITS        = 8,
+    parameter PROGRAM_MEM_ADDR_BITS     = 8,
+    parameter PROGRAM_MEM_DATA_BITS     = 16,
+    parameter THREADS_PER_BLOCK         = 4,
+    parameter PROGRAM_CACHE_SIZE        = 16,
+    parameter PROGRAM_CACHE_LINE_SIZE   = 4,
+    parameter DATA_CACHE_SIZE           = 32,
+    parameter DATA_CACHE_LINE_SIZE      = 4,
+    parameter PROGRAM_MEM_DATA_READ_NUM = 4,
+    parameter DATA_MEM_DATA_READ_NUM    = 4
 ) (
     // Clock and Reset
     input  wire clk,
@@ -37,7 +40,7 @@ module core #(
     output reg                              data_mem_read_valid,
     output reg [DATA_MEM_ADDR_BITS-1:0]     data_mem_read_address,
     input  reg                              data_mem_read_ready,
-    input  reg [DATA_MEM_DATA_BITS-1:0]     data_mem_read_data,
+    input  reg [DATA_MEM_DATA_READ_NUM * DATA_MEM_DATA_BITS-1:0]     data_mem_read_data,
     output reg                              data_mem_write_valid,
     output reg [DATA_MEM_ADDR_BITS-1:0]     data_mem_write_address,
     output reg [DATA_MEM_DATA_BITS-1:0]     data_mem_write_data,
@@ -98,9 +101,12 @@ module core #(
 
     // Data Accessor实例
     data_accessor #(
-        .THREADS_PER_BLOCK (THREADS_PER_BLOCK),
-        .DATA_MEM_ADDR_BITS (DATA_MEM_ADDR_BITS),
-        .DATA_MEM_DATA_BITS (DATA_MEM_DATA_BITS)
+        .THREADS_PER_BLOCK      (THREADS_PER_BLOCK      ),
+        .DATA_MEM_ADDR_BITS     (DATA_MEM_ADDR_BITS     ),
+        .DATA_MEM_DATA_BITS     (DATA_MEM_DATA_BITS     ),
+        .DATA_MEM_DATA_READ_NUM (DATA_MEM_DATA_READ_NUM ),
+        .CACHE_SIZE             (DATA_CACHE_SIZE        ),
+        .CACHE_LINE_SIZE        (DATA_CACHE_LINE_SIZE   )
     ) data_accessor_instance (
         .clk (clk),
         .reset (reset),
@@ -129,10 +135,10 @@ module core #(
 
     // Fetcher
     fetcher #(
-        .PROGRAM_MEM_ADDR_BITS  (PROGRAM_MEM_ADDR_BITS),
-        .PROGRAM_MEM_DATA_BITS  (PROGRAM_MEM_DATA_BITS),
-        .CACHE_SIZE             (CACHE_SIZE),
-        .LINE_SIZE              (LINE_SIZE),
+        .PROGRAM_MEM_ADDR_BITS  (PROGRAM_MEM_ADDR_BITS  ),
+        .PROGRAM_MEM_DATA_BITS  (PROGRAM_MEM_DATA_BITS  ),
+        .CACHE_SIZE             (PROGRAM_CACHE_SIZE     ),
+        .CACHE_LINE_SIZE        (PROGRAM_CACHE_LINE_SIZE),
         .PROGRAM_MEM_DATA_READ_NUM (PROGRAM_MEM_DATA_READ_NUM)
     ) fetcher_instance (
         .clk                    (clk                    ),
