@@ -287,6 +287,7 @@ module core #(
                 .decoded_immediate          (decoded_immediate      ),
                 .alu_out                    (alu_out[i]             ),
                 .lsu_out                    (lsu_out[i]             ),
+                .thread_count               (thread_count           ),
                 .nzp                        (nzp[i]                 ),
                 .rs                         (rs[i]                  ),
                 .rt                         (rt[i]                  )

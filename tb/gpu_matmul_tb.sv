@@ -25,7 +25,7 @@ module gpu_matmul_tb;
     
     // 设备控制寄存器接号
     reg device_control_write_enable;
-    reg [7:0] device_control_data;
+    reg [7:0] device_control_data [NUM_CORES-1:0];
     
     // 程序内存接口
     wire [PROGRAM_MEM_NUM_CHANNELS-1:0] program_mem_read_valid;
@@ -146,7 +146,9 @@ module gpu_matmul_tb;
         reset = 1;
         start = 0;
         device_control_write_enable = 0;
-        device_control_data = 0;
+        for (int i = 0; i < NUM_CORES; i++) begin
+            device_control_data[i] = 0;
+        end
         program_mem_read_ready = 0;
         data_mem_read_ready = 0;
         data_mem_write_ready = 0;
@@ -158,7 +160,8 @@ module gpu_matmul_tb;
         // 配置线程??
         @(posedge clk);
         device_control_write_enable = 1;
-        device_control_data = 6;
+        device_control_data[0] = 3;
+        device_control_data[1] = 3;
         @(posedge clk);
         device_control_write_enable = 0;
         

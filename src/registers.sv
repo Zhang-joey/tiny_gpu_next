@@ -36,6 +36,9 @@ module registers #(
     input reg [DATA_BITS-1:0] alu_out,
     input reg [DATA_BITS-1:0] lsu_out,
 
+    // dispatch Inputs
+    input reg  [$clog2(THREADS_PER_BLOCK):0]   thread_count,
+
     // Registers
     //[modify] add nzp to registers output
     output reg [2:0] nzp,
@@ -86,13 +89,14 @@ module registers #(
             registers[12] <= 8'b0;
             // Initialize read-only registers
             registers[13] <= 8'b0;              // %blockIdx
-            registers[14] <= THREADS_PER_BLOCK; // %blockDim
+            registers[14] <= 8'b0;      // %blockDim
             registers[15] <= THREAD_ID;         // %threadIdx
         end 
         else if (enable) begin 
             // [Bad Solution] Shouldn't need to set this every cycle
             registers[13] <= block_id; // Update the block_id when a new block is issued from dispatcher
-            
+            registers[14] <= thread_count;
+
             // Fill rs/rt when core_state = ISSUE
             if (core_state == 4'b0011) begin 
                 rs <= registers[decoded_rs_address];

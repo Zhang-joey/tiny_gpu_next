@@ -29,7 +29,7 @@ module gpu #(
 
     // Device Control Register
     input  wire                                     device_control_write_enable,
-    input  wire [7:0]                               device_control_data,
+    input  wire [7:0]                               device_control_data [NUM_CORES-1:0],
 
     // Program Memory
     output wire [PROGRAM_MEM_NUM_CHANNELS-1:0]      program_mem_read_valid,
@@ -48,7 +48,7 @@ module gpu #(
     input  wire [DATA_MEM_NUM_CHANNELS-1:0]         data_mem_write_ready
 );
     // Control
-    wire [7:0]                                      thread_count;
+    wire [7:0]                                      thread_count [NUM_CORES-1:0];
 
     // Compute Core State
     reg  [NUM_CORES-1:0]                            core_start;
@@ -75,7 +75,9 @@ module gpu #(
     reg  [PROGRAM_MEM_DATA_READ_NUM * PROGRAM_MEM_DATA_BITS-1:0]              fetcher_read_data [NUM_FETCHERS-1:0];
     
     // Device Control Register
-    dcr dcr_instance (
+    dcr #(
+        .NUM_CORES(NUM_CORES)
+    ) dcr_instance (
         .clk                        (clk                        ),
         .reset                      (reset                      ),
 

@@ -14,7 +14,7 @@ module dispatch #(
     input wire start,
 
     // Kernel Metadata
-    input   wire    [7:0] thread_count,
+    input   wire    [7:0] thread_count [NUM_CORES-1:0],
 
     // Core States
     input   wire    [NUM_CORES-1:0] core_done,
@@ -26,9 +26,21 @@ module dispatch #(
     // Kernel Execution
     output  reg     done
 );
+    //[modify] change the total_blocks to the non-zero-num of thread_count
     // Calculate the total number of blocks based on total threads & threads per block
-    wire [7:0] total_blocks;
-    assign total_blocks = (thread_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    reg [7:0] total_blocks;
+    reg [NUM_CORES-1:0] core_mask;
+    always @(*) begin
+        total_blocks = 0;
+        core_mask = 0;
+        for (int i = 0; i < NUM_CORES; i++) begin
+            if (thread_count[i] != 0) begin
+                total_blocks += 1;
+                core_mask[i] = 1;
+            end
+        end
+    end
+    //assign total_blocks = (thread_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
 
     // Keep track of how many blocks have been processed
 //    reg [NUM_CORES-1:0] core_mask;
@@ -84,7 +96,6 @@ module dispatch #(
     always @(posedge clk) begin
         if (reset) begin
             core_start <= 'b0;
-//            core_mask <= 'b0;
             blocks_dispatched <= 0;
             blocks_done = 0;
             for (int i = 0; i < NUM_CORES; i++) begin
@@ -93,11 +104,10 @@ module dispatch #(
             end
         end else if (start) begin    
             for (int i = 0; i < NUM_CORES; i++) begin    
-                if (core_reset[i] && (blocks_dispatched < total_blocks)) begin 
+                if (core_mask[i] && (blocks_dispatched < total_blocks)) begin 
                     core_start[i]           <= 1;
-//                    core_mask[i]            <= 1;
                     core_block_id[i]        <= blocks_dispatched;
-                    core_thread_count[i]    <= (blocks_dispatched == total_blocks - 1) ? thread_count - (blocks_dispatched * THREADS_PER_BLOCK) : THREADS_PER_BLOCK;
+                    core_thread_count[i]    <= thread_count[i];
                     
                     blocks_dispatched = blocks_dispatched + 1;
                 end
